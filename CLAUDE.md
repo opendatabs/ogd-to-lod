@@ -52,7 +52,9 @@ ogd-to-lod/
 
 ## Development Workflow
 
-1. Work on issues from the GitHub issue tracker
-2. Run tests with `pytest`
-3. Commit with descriptive messages referencing issue numbers
-4. Push to main branch
+1. Create a feature branch from main (e.g., `feature/issue-2-csv-parser`)
+2. Work on issues from the GitHub issue tracker
+3. Run tests with `pytest`
+4. Commit with descriptive messages referencing issue numbers
+5. Push branch and create a Pull Request to main
+6. Never commit directly to main branch
