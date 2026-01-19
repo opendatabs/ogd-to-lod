@@ -1,0 +1,20 @@
+# OGD to LOD Configuration
+# Environment variables can be referenced using ${VAR} or $VAR syntax
+
+github:
+  repo: "redlink-gmbh/ogd-to-lod"
+  token: "${GITHUB_TOKEN}"
+
+azure:
+  endpoint: "${AZURE_OPENAI_ENDPOINT}"
+  api_key: "${AZURE_OPENAI_KEY}"
+  deployment: "gpt-4"
+  api_version: "2024-02-15-preview"
+
+sparql:
+  # Optional: SPARQL endpoint for querying existing dimensions (V1)
+  endpoint: null
+
+rml:
+  # Base URI pattern for generated resources
+  base_uri: "https://ld.stadt-zuerich.ch/statistics/"
