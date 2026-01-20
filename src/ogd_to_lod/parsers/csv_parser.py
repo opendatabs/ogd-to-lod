@@ -39,7 +39,7 @@ def _read_file_content(source: str, encoding: str | None = None) -> tuple[str, s
     Raises:
         CSVParseError: If the file cannot be read.
     """
-    encodings_to_try = [encoding] if encoding else ["utf-8", "iso-8859-1", "cp1252"]
+    encodings_to_try = [encoding] if encoding else ["utf-8-sig", "utf-8", "iso-8859-1", "cp1252"]
 
     if _is_url(source):
         try:
@@ -62,6 +62,9 @@ def _read_file_content(source: str, encoding: str | None = None) -> tuple[str, s
             continue
         try:
             content = raw_content.decode(enc)
+            # Strip BOM if present (in case utf-8 was used instead of utf-8-sig)
+            if content.startswith("\ufeff"):
+                content = content[1:]
             return content, enc
         except (UnicodeDecodeError, LookupError):
             continue
