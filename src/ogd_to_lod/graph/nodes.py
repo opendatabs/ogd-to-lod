@@ -7,6 +7,7 @@ from ogd_to_lod.ai import AIService, ParsedResponse
 from ogd_to_lod.config import Config
 from ogd_to_lod.logging import get_logger
 from ogd_to_lod.parsers import parse_csv, parse_dcat, CSVParseError, DCATParseError
+from ogd_to_lod.rml import RMLGenerator, RMLGenerationError
 
 from .state import (
     DimensionProposal,
@@ -243,6 +244,77 @@ Your response (one word only):"""
         # Unknown intent, stay in current state and ask for clarification
         state.awaiting_user_input = True
         logger.info("Unknown intent, awaiting clarification")
+
+    return state
+
+
+def generate_node(state: GraphState, ai_service: AIService) -> GraphState:
+    """Generate RML mapping from approved proposal.
+
+    Uses the AI service to generate RML (RDF Mapping Language) in Turtle format
+    based on the approved mapping proposal and CSV schema.
+
+    Args:
+        state: Current graph state with approved mapping proposal.
+        ai_service: AI service for generating RML.
+
+    Returns:
+        Updated state with generated RML.
+    """
+    logger.info("Entering GENERATE state")
+
+    # Validate prerequisites
+    if not state.mapping_proposal:
+        state.error_message = "No mapping proposal available for RML generation"
+        state.current_state = FlowState.ERROR
+        return state
+
+    if state.mapping_proposal.status != "approved":
+        state.error_message = "Mapping proposal must be approved before generating RML"
+        state.current_state = FlowState.ERROR
+        return state
+
+    if not state.csv_schema:
+        state.error_message = "CSV schema is required for RML generation"
+        state.current_state = FlowState.ERROR
+        return state
+
+    if not state.csv_path:
+        state.error_message = "CSV path is required for RML generation"
+        state.current_state = FlowState.ERROR
+        return state
+
+    if not state.base_uri:
+        state.error_message = "Base URI is required for RML generation"
+        state.current_state = FlowState.ERROR
+        return state
+
+    # Generate RML
+    try:
+        generator = RMLGenerator(ai_service)
+        rml_content = generator.generate(
+            mapping_proposal=state.mapping_proposal.to_dict(),
+            csv_schema=state.csv_schema,
+            csv_path=state.csv_path,
+            base_uri=state.base_uri,
+        )
+
+        state.generated_rml = rml_content
+        state.add_message(
+            "assistant",
+            f"Generated RML mapping:\n\n```turtle\n{rml_content}\n```"
+        )
+
+        logger.info(f"Successfully generated RML ({len(rml_content)} characters)")
+
+        # Transition to PREVIEW state
+        state.current_state = FlowState.PREVIEW
+        logger.info("Transitioning to PREVIEW state")
+
+    except RMLGenerationError as e:
+        logger.error(f"RML generation failed: {e}")
+        state.error_message = f"Failed to generate RML: {e}"
+        state.current_state = FlowState.ERROR
 
     return state
 

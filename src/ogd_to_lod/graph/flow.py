@@ -8,7 +8,7 @@ from ogd_to_lod.config import Config
 from ogd_to_lod.logging import get_logger
 
 from .state import FlowState, GraphState
-from .nodes import init_node, analyze_node, propose_node, handle_user_input
+from .nodes import init_node, analyze_node, propose_node, handle_user_input, generate_node
 
 
 logger = get_logger(__name__)
@@ -49,6 +49,7 @@ class MappingFlow:
         graph.add_node("propose", self._wrap_propose)
         graph.add_node("wait_for_input", self._wait_for_input)
         graph.add_node("process_input", self._wrap_process_input)
+        graph.add_node("generate", self._wrap_generate)
         graph.add_node("error", self._handle_error)
 
         # Set entry point
@@ -79,9 +80,18 @@ class MappingFlow:
             "process_input",
             self._route_from_process_input,
             {
-                "generate": END,  # For now, end here (GENERATE is issue #7)
+                "generate": "generate",  # Transition to generate node
                 "refine": "propose",  # Loop back for refinement
                 "wait": "wait_for_input",  # Wait for more input
+                "error": "error",
+            },
+        )
+
+        graph.add_conditional_edges(
+            "generate",
+            self._route_from_generate,
+            {
+                "preview": END,  # For now, end after generation (PREVIEW is future work)
                 "error": "error",
             },
         )
@@ -118,6 +128,11 @@ class MappingFlow:
             )
         return self._state.to_dict()
 
+    def _wrap_generate(self, state_dict: dict[str, Any]) -> dict[str, Any]:
+        """Wrapper for generate node."""
+        self._state = generate_node(self._state, self._ai_service)
+        return self._state.to_dict()
+
     def _handle_error(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         """Handle error state."""
         logger.error(f"Flow error: {self._state.error_message}")
@@ -146,6 +161,12 @@ class MappingFlow:
         if self._state.awaiting_user_input:
             return "wait"
         return "wait"
+
+    def _route_from_generate(self, state_dict: dict[str, Any]) -> str:
+        """Route from GENERATE state."""
+        if self._state.current_state == FlowState.ERROR:
+            return "error"
+        return "preview"
 
     @property
     def state(self) -> GraphState:
@@ -199,9 +220,13 @@ class MappingFlow:
         # Process input and continue
         self._state = handle_user_input(self._state, user_input, self._ai_service)
 
-        # If approved, we'd transition to GENERATE (issue #7)
-        # For now, if refining, we call propose again
-        if self._state.current_state == FlowState.REFINE:
+        # Handle state transitions based on user intent
+        if self._state.current_state == FlowState.GENERATE:
+            # User approved - generate RML
+            logger.info("User approved mapping, generating RML")
+            self._state = generate_node(self._state, self._ai_service)
+        elif self._state.current_state == FlowState.REFINE:
+            # User wants changes - loop back to propose
             self._state.current_state = FlowState.PROPOSE
             self._state = propose_node(self._state, self._ai_service)
 
@@ -229,3 +254,11 @@ class MappingFlow:
             self._state.mapping_proposal is not None
             and self._state.mapping_proposal.status == "approved"
         )
+
+    def get_generated_rml(self) -> str | None:
+        """Get the generated RML Turtle content."""
+        return self._state.generated_rml
+
+    def has_generated_rml(self) -> bool:
+        """Check if RML has been generated."""
+        return self._state.generated_rml is not None

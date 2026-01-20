@@ -11,6 +11,7 @@ from ogd_to_lod.graph.state import (
 from ogd_to_lod.graph.flow import MappingFlow
 from ogd_to_lod.graph.nodes import (
     analyze_node,
+    generate_node,
     handle_user_input,
     init_node,
     propose_node,
@@ -28,6 +29,7 @@ __all__ = [
     "MappingFlow",
     # Nodes
     "analyze_node",
+    "generate_node",
     "handle_user_input",
     "init_node",
     "propose_node",
