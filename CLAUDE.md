@@ -58,3 +58,25 @@ ogd-to-lod/
 4. Commit with descriptive messages referencing issue numbers
 5. Push branch and create a Pull Request to main
 6. Never commit directly to main branch
+
+### Working on Multiple Issues (Worktrees)
+
+To work on multiple issues in parallel, use git worktrees:
+
+```bash
+# Create a new worktree for an issue
+./scripts/setup-worktree.sh <issue-number>
+
+# Example: work on issue #12
+./scripts/setup-worktree.sh 12
+# Creates: ../ogd-to-lod-issue-12 with branch feature/issue-12
+```
+
+The script automatically symlinks `.env` and `.claude/` from the main repo.
+
+**Important**: After creating a worktree, open a new Claude Code session in that directory.
+
+```bash
+# Clean up when done
+git worktree remove ../ogd-to-lod-issue-<number>
+```
