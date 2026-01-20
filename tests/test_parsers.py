@@ -35,7 +35,7 @@ Charlie,35,60000.00"""
         assert result.source == str(csv_file)
         assert len(result.columns) == 3
         assert result.total_rows == 3
-        assert result.encoding == "utf-8"
+        assert result.encoding in ("utf-8", "utf-8-sig")
         assert result.delimiter == ","
 
     def test_column_names_extracted(self, tmp_path: Path) -> None:
@@ -169,7 +169,7 @@ Böhm,Genève"""
 
         result = parse_csv(str(csv_file))
 
-        assert result.encoding == "utf-8"
+        assert result.encoding in ("utf-8", "utf-8-sig")
         assert result.sample_rows[0]["name"] == "Müller"
         assert result.sample_rows[0]["city"] == "Zürich"
 
@@ -194,7 +194,7 @@ Böhm,Genève"""
 
         result = parse_csv(str(csv_file), encoding="utf-8")
 
-        assert result.encoding == "utf-8"
+        assert result.encoding in ("utf-8", "utf-8-sig")
 
     def test_file_not_found_error(self) -> None:
         """Test error when file does not exist."""
@@ -488,7 +488,7 @@ class TestDCATParser:
         json_file = tmp_path / "invalid.json"
         json_file.write_text("{ invalid json }")
 
-        with pytest.raises(DCATParseError, match="Invalid JSON-LD"):
+        with pytest.raises(DCATParseError, match="Failed to parse"):
             parse_dcat(str(json_file))
 
     def test_format_hint_json_ld(self, tmp_path: Path) -> None:

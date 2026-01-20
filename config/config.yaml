@@ -8,7 +8,7 @@ github:
 azure:
   endpoint: "${AZURE_OPENAI_ENDPOINT}"
   api_key: "${AZURE_OPENAI_KEY}"
-  deployment: "gpt-4"
+  deployment: "${AZURE_OPENAI_DEPLOYMENT}"
   api_version: "2024-02-15-preview"
 
 sparql:
