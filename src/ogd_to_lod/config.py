@@ -42,6 +42,31 @@ class RMLConfig:
 
 
 @dataclass
+class LoggingConfig:
+    """Logging configuration."""
+
+    level: str = "INFO"
+
+    def get_level_int(self) -> int:
+        """Get the logging level as an integer.
+
+        Returns:
+            The logging level constant from the logging module.
+        """
+        import logging
+
+        level_map = {
+            "DEBUG": logging.DEBUG,
+            "INFO": logging.INFO,
+            "WARNING": logging.WARNING,
+            "WARN": logging.WARNING,
+            "ERROR": logging.ERROR,
+            "CRITICAL": logging.CRITICAL,
+        }
+        return level_map.get(self.level.upper(), logging.INFO)
+
+
+@dataclass
 class Config:
     """Main application configuration."""
 
@@ -49,6 +74,7 @@ class Config:
     azure: AzureOpenAIConfig
     sparql: SPARQLConfig = field(default_factory=SPARQLConfig)
     rml: RMLConfig = field(default_factory=RMLConfig)
+    logging: LoggingConfig = field(default_factory=LoggingConfig)
 
 
 def _substitute_env_vars(value: str) -> str:
@@ -158,11 +184,17 @@ def load_config(config_path: str | Path) -> Config:
             base_uri=rml_data.get("base_uri", ""),
         )
 
+        # Logging config - can also be set via LOG_LEVEL environment variable
+        logging_data = config_data.get("logging", {})
+        log_level = logging_data.get("level", os.environ.get("LOG_LEVEL", "INFO"))
+        logging_config = LoggingConfig(level=log_level)
+
         return Config(
             github=github,
             azure=azure,
             sparql=sparql,
             rml=rml,
+            logging=logging_config,
         )
 
     except KeyError as e:
