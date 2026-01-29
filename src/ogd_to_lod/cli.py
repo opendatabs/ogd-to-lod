@@ -4,7 +4,7 @@ import argparse
 import sys
 
 from ogd_to_lod.config import load_config
-from ogd_to_lod.graph import MappingFlow, FlowState
+from ogd_to_lod.graph import FlowState, MappingFlow
 from ogd_to_lod.logging import get_logger
 
 logger = get_logger(__name__)
@@ -94,13 +94,20 @@ def main() -> int:
     # Interactive loop
     while flow.is_awaiting_input() and not flow.is_complete():
         print("\n" + "-" * 60)
+
+        # Show appropriate prompt based on state
+        if flow.is_awaiting_pr_confirmation():
+            prompt = "Create a PR with this mapping? (yes/no): "
+        else:
+            prompt = "Your response (or 'quit' to exit): "
+
         try:
-            user_input = input("Your response (or 'quit' to exit): ").strip()
+            user_input = input(prompt).strip()
         except (EOFError, KeyboardInterrupt):
             print("\nExiting...")
             return 0
 
-        if user_input.lower() in ("quit", "exit", "q"):
+        if user_input.lower() in ("quit", "exit", "q") and not flow.is_awaiting_pr_confirmation():
             print("Exiting...")
             return 0
 
@@ -143,8 +150,18 @@ def main() -> int:
                     print(preview)
                     if len(flow.get_rdf_preview()) > 2000:
                         print("... (truncated)")
-                print("\nReady for PR creation (not yet implemented).")
-                break
+
+                # Check if awaiting PR confirmation
+                if flow.is_awaiting_pr_confirmation():
+                    continue
+
+                # Check if PR was created
+                if flow.has_created_pr():
+                    print("\n" + "=" * 60)
+                    print("PR created successfully!")
+                    print(f"PR #{flow.get_pr_number()}: {flow.get_pr_url()}")
+                    break
+
             elif flow.get_validation_error():
                 print("\n" + "=" * 60)
                 print("Validation: FAILED")
@@ -159,6 +176,14 @@ def main() -> int:
         # Check if approved but not yet generated
         if flow.is_approved() and not flow.has_generated_rml():
             print("\nProposal approved! Generating RML...")
+
+        # Check if flow completed (user cancelled PR)
+        if flow.is_complete():
+            if not flow.has_created_pr() and flow.has_generated_rml():
+                print("\n" + "=" * 60)
+                print("RML mapping generated but PR creation was skipped.")
+                print("You can find the generated RML above.")
+            break
 
     return 0
 

@@ -1,22 +1,24 @@
 """LangGraph flow definition for the mapping conversation."""
 
-from typing import Any, Callable
-from langgraph.graph import StateGraph, END
+from typing import Any
+
+from langgraph.graph import END, StateGraph
 
 from ogd_to_lod.ai import AIService
 from ogd_to_lod.config import Config
 from ogd_to_lod.logging import get_logger
 
-from .state import FlowState, GraphState
 from .nodes import (
-    init_node,
     analyze_node,
-    propose_node,
-    handle_user_input,
+    create_pr_node,
     generate_node,
+    handle_user_input,
+    init_node,
+    preview_node,
+    propose_node,
     validate_node,
 )
-
+from .state import FlowState, GraphState, UserIntent
 
 logger = get_logger(__name__)
 
@@ -58,6 +60,10 @@ class MappingFlow:
         graph.add_node("process_input", self._wrap_process_input)
         graph.add_node("generate", self._wrap_generate)
         graph.add_node("validate", self._wrap_validate)
+        graph.add_node("preview", self._wrap_preview)
+        graph.add_node("wait_for_pr_confirmation", self._wait_for_pr_confirmation)
+        graph.add_node("process_pr_confirmation", self._wrap_process_pr_confirmation)
+        graph.add_node("create_pr", self._wrap_create_pr)
         graph.add_node("error", self._handle_error)
 
         # Set entry point
@@ -108,8 +114,30 @@ class MappingFlow:
             "validate",
             self._route_from_validate,
             {
-                "preview": END,  # Validation passed, proceed to preview (end for now)
+                "preview": "preview",  # Validation passed, proceed to preview
                 "refine": "propose",  # Validation failed, loop back for refinement
+                "error": "error",
+            },
+        )
+
+        graph.add_edge("preview", "wait_for_pr_confirmation")
+
+        graph.add_conditional_edges(
+            "process_pr_confirmation",
+            self._route_from_pr_confirmation,
+            {
+                "create_pr": "create_pr",
+                "end": END,
+                "wait": "wait_for_pr_confirmation",
+                "error": "error",
+            },
+        )
+
+        graph.add_conditional_edges(
+            "create_pr",
+            self._route_from_create_pr,
+            {
+                "end": END,
                 "error": "error",
             },
         )
@@ -163,6 +191,39 @@ class MappingFlow:
         )
         return self._state.to_dict()
 
+    def _wrap_preview(self, state_dict: dict[str, Any]) -> dict[str, Any]:
+        """Wrapper for preview node."""
+        self._state = preview_node(self._state)
+        return self._state.to_dict()
+
+    def _wait_for_pr_confirmation(self, state_dict: dict[str, Any]) -> dict[str, Any]:
+        """Node that waits for PR creation confirmation."""
+        self._state.awaiting_user_input = True
+        return self._state.to_dict()
+
+    def _wrap_process_pr_confirmation(self, state_dict: dict[str, Any]) -> dict[str, Any]:
+        """Wrapper for processing PR confirmation input."""
+        if self._state.user_input:
+            user_input = self._state.user_input.lower().strip()
+            if user_input in ("yes", "y", "ok", "create", "create pr", "sure", "proceed"):
+                self._state.user_intent = UserIntent.APPROVE
+                self._state.current_state = FlowState.CREATE_PR
+                logger.info("User approved PR creation")
+            elif user_input in ("no", "n", "cancel", "skip", "exit", "quit"):
+                self._state.user_intent = UserIntent.REJECT
+                self._state.current_state = FlowState.END
+                logger.info("User cancelled PR creation")
+            else:
+                # Unknown response, ask again
+                self._state.awaiting_user_input = True
+                logger.info("Unknown response, awaiting clarification")
+        return self._state.to_dict()
+
+    def _wrap_create_pr(self, state_dict: dict[str, Any]) -> dict[str, Any]:
+        """Wrapper for create PR node."""
+        self._state = create_pr_node(self._state, self._config)
+        return self._state.to_dict()
+
     def _handle_error(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         """Handle error state."""
         logger.error(f"Flow error: {self._state.error_message}")
@@ -206,6 +267,24 @@ class MappingFlow:
             return "refine"
         return "preview"
 
+    def _route_from_pr_confirmation(self, state_dict: dict[str, Any]) -> str:
+        """Route based on PR confirmation response."""
+        if self._state.current_state == FlowState.ERROR:
+            return "error"
+        if self._state.current_state == FlowState.CREATE_PR:
+            return "create_pr"
+        if self._state.current_state == FlowState.END:
+            return "end"
+        if self._state.awaiting_user_input:
+            return "wait"
+        return "wait"
+
+    def _route_from_create_pr(self, state_dict: dict[str, Any]) -> str:
+        """Route from CREATE_PR state."""
+        if self._state.current_state == FlowState.ERROR:
+            return "error"
+        return "end"
+
     @property
     def state(self) -> GraphState:
         """Get current flow state."""
@@ -216,7 +295,12 @@ class MappingFlow:
         """Get the AI service instance."""
         return self._ai_service
 
-    def start(self, csv_path: str, dcat_path: str | None = None, base_uri: str | None = None) -> GraphState:
+    def start(
+        self,
+        csv_path: str,
+        dcat_path: str | None = None,
+        base_uri: str | None = None,
+    ) -> GraphState:
         """Start the mapping flow.
 
         Args:
@@ -237,7 +321,7 @@ class MappingFlow:
         )
 
         # Run until we need user input
-        result = self._graph.invoke(self._state.to_dict())
+        self._graph.invoke(self._state.to_dict())
 
         return self._state
 
@@ -255,7 +339,11 @@ class MappingFlow:
         self._state.user_input = user_input
         self._state.awaiting_user_input = False
 
-        # Process input and continue
+        # Handle PR confirmation if in PREVIEW state
+        if self._state.current_state == FlowState.PREVIEW:
+            return self._handle_pr_confirmation(user_input)
+
+        # Process input for proposal states
         self._state = handle_user_input(self._state, user_input, self._ai_service)
 
         # Handle state transitions based on user intent
@@ -273,8 +361,12 @@ class MappingFlow:
                     use_docker=self._config.rml.rmlmapper_use_docker,
                 )
 
+                # If validation passed, move to PREVIEW
+                if self._state.current_state == FlowState.PREVIEW:
+                    self._state = preview_node(self._state)
+
                 # If validation failed, loop back to propose with error context
-                if self._state.current_state == FlowState.REFINE:
+                elif self._state.current_state == FlowState.REFINE:
                     logger.info("Validation failed, refining mapping")
                     self._state = propose_node(self._state, self._ai_service)
 
@@ -282,6 +374,41 @@ class MappingFlow:
             # User wants changes - loop back to propose
             self._state.current_state = FlowState.PROPOSE
             self._state = propose_node(self._state, self._ai_service)
+
+        return self._state
+
+    def _handle_pr_confirmation(self, user_input: str) -> GraphState:
+        """Handle user confirmation for PR creation.
+
+        Args:
+            user_input: User's response.
+
+        Returns:
+            Updated state after processing PR confirmation.
+        """
+        user_input_lower = user_input.lower().strip()
+        self._state.add_message("user", user_input)
+
+        if user_input_lower in ("yes", "y", "ok", "create", "create pr", "sure", "proceed"):
+            self._state.user_intent = UserIntent.APPROVE
+            logger.info("User approved PR creation")
+            self._state = create_pr_node(self._state, self._config)
+        elif user_input_lower in ("no", "n", "cancel", "skip", "exit", "quit"):
+            self._state.user_intent = UserIntent.REJECT
+            self._state.current_state = FlowState.END
+            self._state.add_message(
+                "assistant",
+                "PR creation cancelled. RML mapping has been generated but not committed."
+            )
+            logger.info("User cancelled PR creation")
+        else:
+            # Unknown response, ask for clarification
+            self._state.awaiting_user_input = True
+            self._state.add_message(
+                "assistant",
+                "Please respond with 'yes' to create a PR or 'no' to skip PR creation."
+            )
+            logger.info("Unknown response, awaiting clarification")
 
         return self._state
 
@@ -334,3 +461,22 @@ class MappingFlow:
     def has_rdf_preview(self) -> bool:
         """Check if an RDF preview is available."""
         return self._state.rdf_preview is not None
+
+    def is_awaiting_pr_confirmation(self) -> bool:
+        """Check if flow is waiting for PR creation confirmation."""
+        return (
+            self._state.current_state == FlowState.PREVIEW
+            and self._state.awaiting_user_input
+        )
+
+    def has_created_pr(self) -> bool:
+        """Check if PR has been created."""
+        return self._state.pr_url is not None
+
+    def get_pr_url(self) -> str | None:
+        """Get the URL of the created PR."""
+        return self._state.pr_url
+
+    def get_pr_number(self) -> int | None:
+        """Get the number of the created PR."""
+        return self._state.pr_number
