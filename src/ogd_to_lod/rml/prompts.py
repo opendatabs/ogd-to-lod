@@ -4,8 +4,9 @@ RML_GENERATION_PROMPT = """\
 Generate a valid RML (RDF Mapping Language) mapping in Turtle format \
 based on the approved mapping proposal and CSV schema.
 
-## Required Prefixes
-Use the following prefixes:
+## Prefix Definitions
+
+Always use the following standard prefixes:
 - @prefix rr: <http://www.w3.org/ns/r2rml#> .
 - @prefix rml: <http://semweb.mmlab.be/ns/rml#> .
 - @prefix ql: <http://semweb.mmlab.be/ns/ql#> .
@@ -13,6 +14,30 @@ Use the following prefixes:
 - @prefix schema: <http://schema.org/> .
 - @prefix cube: <https://cube.link/> .
 - @prefix ex: <{base_uri}> .
+
+Define additional sub-prefixes for each sub-path of the base URI that you need. \
+For example, if the mapping uses dimensions, measures, and observations:
+- @prefix ex-dim: <{base_uri}dimension/> .
+- @prefix ex-measure: <{base_uri}measure/> .
+- @prefix ex-obs: <{base_uri}observation/> .
+
+## CRITICAL: Turtle Syntax Rule for Prefixed Names
+
+The `/` character is NOT allowed in the local part of a prefixed name. \
+This is a hard constraint of the W3C Turtle grammar (PN_LOCAL production).
+
+WRONG — produces invalid Turtle:
+  ex:dimension/time
+  ex:measure/O3
+  ex:observation/{{year}}
+
+CORRECT — use sub-prefixes instead:
+  ex-dim:time
+  ex-measure:O3
+  ex-obs:{{year}}
+
+You MUST define a sub-prefix for every sub-path and use it consistently. \
+Never write a prefixed name that contains `/` in the local part.
 
 ## CSV Source Configuration
 The CSV source file path is: {csv_path}
@@ -31,7 +56,7 @@ The CSV source file path is: {csv_path}
 
 2. **TriplesMap**: Create a main TriplesMap that:
    - Uses a subject template combining dimension values for unique observation URIs
-   - Example: ex:observation/{{year}}/{{region}}
+   - Example: https://ld.stadt-zuerich.ch/statistics/observation/{{year}}/{{region}}
 
 3. **Dimension Mappings**: For each dimension in the proposal:
    - Use cube:dimension predicate
@@ -53,7 +78,7 @@ The CSV source file path is: {csv_path}
 
 ## Output Format
 Provide ONLY the RML Turtle code in a fenced code block with language 'turtle'.
-The RML must be valid Turtle syntax.
+The RML must be syntactically valid Turtle.
 Do not include explanations outside the code block.
 
 ```turtle
