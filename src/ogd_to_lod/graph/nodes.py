@@ -24,6 +24,9 @@ from .state import (
 
 logger = get_logger(__name__)
 
+# Maximum number of automatic syntax retries before escalating to the user
+MAX_SYNTAX_RETRIES = 3
+
 
 def init_node(state: GraphState, config: Config) -> GraphState:
     """Initialize the conversation flow.
@@ -650,16 +653,55 @@ def _parse_proposal(data: dict[str, Any]) -> MappingProposal:
     return proposal
 
 
+def syntax_check_node(state: GraphState) -> GraphState:
+    """Tier 1: Check RML Turtle syntax using rdflib.
+
+    Fast, cheap check that catches syntax errors. On failure, stores the
+    error in state so the flow can auto-retry via re-generation.
+
+    Args:
+        state: Current graph state with generated RML.
+
+    Returns:
+        Updated state. On success, transitions to VALIDATE (Tier 2).
+        On failure, sets validation_error with the syntax error.
+    """
+    logger.info("Entering SYNTAX_CHECK (Tier 1)")
+
+    if not state.generated_rml:
+        state.error_message = "No RML to validate"
+        state.current_state = FlowState.ERROR
+        return state
+
+    validator = RMLValidator()
+    result = validator.validate_syntax(state.generated_rml)
+
+    if result.valid:
+        logger.info("Tier 1 syntax check passed")
+        state.validation_error = None
+        state.current_state = FlowState.VALIDATE
+    else:
+        logger.warning(f"Tier 1 syntax check failed: {result.error_message}")
+        state.validation_error = result.error_message
+        state.add_message(
+            "assistant",
+            f"RML syntax error (auto-retrying):\n\n{result.error_message}",
+        )
+
+    return state
+
+
 def validate_node(
     state: GraphState,
     rmlmapper_jar: str | None = None,
     use_docker: bool = False,
 ) -> GraphState:
-    """Validate the generated RML mapping.
+    """Tier 2: Validate RML with RMLMapper against sample CSV data.
 
-    Executes the RML mapping against the source CSV to verify it produces
-    valid RDF output. If validation fails, the error is stored and the flow
-    can loop back for refinement.
+    Runs the full RMLMapper validation. On failure, escalates to the user
+    (transitions to REFINE) since data-fit issues need human judgement.
+
+    If RMLMapper is unavailable, gracefully skips to PREVIEW with a note.
 
     Args:
         state: Current graph state with generated RML.
@@ -669,7 +711,7 @@ def validate_node(
     Returns:
         Updated state with validation result.
     """
-    logger.info("Entering VALIDATE state")
+    logger.info("Entering VALIDATE state (Tier 2 — RMLMapper)")
 
     # Check prerequisites
     if not state.generated_rml:
@@ -685,12 +727,12 @@ def validate_node(
     # Initialize validator
     validator = RMLValidator(rmlmapper_jar=rmlmapper_jar, use_docker=use_docker)
 
-    # Run validation
-    logger.debug(f"Validating RML against {state.csv_path}")
-    result = validator.validate(state.generated_rml, state.csv_path)
+    # Run Tier 2 validation with sample CSV
+    logger.debug(f"Validating RML against sample from {state.csv_path}")
+    result = validator.validate_with_rmlmapper(state.generated_rml, state.csv_path)
 
     if result.valid:
-        logger.info("RML validation successful")
+        logger.info("Tier 2 RMLMapper validation successful")
 
         # Store RDF preview
         state.rdf_preview = result.rdf_output
@@ -703,7 +745,6 @@ def validate_node(
 
         # Add success message
         if result.rdf_output:
-            # Show a sample of the output (first 1000 chars)
             preview_sample = result.rdf_output[:1000]
             if len(result.rdf_output) > 1000:
                 preview_sample += "\n... (truncated)"
@@ -714,10 +755,13 @@ def validate_node(
                 f"```turtle\n{preview_sample}\n```",
             )
         else:
+            # RMLMapper was skipped (not configured)
+            note = ""
+            if result.warnings:
+                note = f" ({result.warnings[0]})"
             state.add_message(
                 "assistant",
-                "RML syntax validation successful. "
-                "(Full RDF preview unavailable - RMLMapper not configured)",
+                f"RML syntax validation successful.{note}",
             )
 
         # Transition to PREVIEW
@@ -725,24 +769,28 @@ def validate_node(
         logger.info("Transitioning to PREVIEW state")
 
     else:
-        logger.warning(f"RML validation failed: {result.error_message}")
+        logger.warning(f"Tier 2 validation failed: {result.error_message}")
 
-        # Store validation error
+        # Store validation error with category info
+        error_desc = result.error_message
+        if result.user_friendly_error:
+            error_desc = result.user_friendly_error
+
         state.validation_error = result.error_message
         state.rdf_preview = None
 
-        # Add error message to conversation
+        # Escalate to user (data-fit issues need human judgement)
         state.add_message(
             "assistant",
-            f"RML validation failed:\n\n{result.error_message}\n\n"
-            "I'll adjust the mapping to fix this issue.",
+            f"RML validation failed (RMLMapper):\n\n{error_desc}\n\n"
+            "Please review and suggest how to fix this issue.",
         )
 
-        # Transition back to REFINE for correction
+        # Transition to REFINE — always escalate Tier 2 failures
         state.current_state = FlowState.REFINE
         if state.mapping_proposal:
             state.mapping_proposal.status = "refining"
-        logger.info("Validation failed, transitioning to REFINE state")
+        logger.info("Tier 2 validation failed, transitioning to REFINE state")
 
     return state
 def _robust_parse_yaml_proposal(yaml_content: str) -> MappingProposal | None:

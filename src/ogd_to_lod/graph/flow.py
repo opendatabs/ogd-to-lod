@@ -9,6 +9,7 @@ from ogd_to_lod.config import Config
 from ogd_to_lod.logging import get_logger
 
 from .nodes import (
+    MAX_SYNTAX_RETRIES,
     analyze_node,
     create_pr_node,
     generate_node,
@@ -16,6 +17,7 @@ from .nodes import (
     init_node,
     preview_node,
     propose_node,
+    syntax_check_node,
     validate_node,
 )
 from .state import FlowState, GraphState, UserIntent
@@ -352,20 +354,24 @@ class MappingFlow:
             logger.info("User approved mapping, generating RML")
             self._state = generate_node(self._state, self._ai_service)
 
-            # Validate the generated RML
             if self._state.current_state != FlowState.ERROR:
-                logger.info("Validating generated RML")
-                self._state = validate_node(
-                    self._state,
-                    rmlmapper_jar=self._config.rml.rmlmapper_jar,
-                    use_docker=self._config.rml.rmlmapper_use_docker,
-                )
+                # Run Tier 1 (syntax) with auto-retry, then Tier 2 (RMLMapper)
+                self._run_tier1_with_retries()
 
-                # If validation passed, move to PREVIEW
+                # If Tier 1 passed, run Tier 2 (RMLMapper)
+                if self._state.current_state == FlowState.VALIDATE:
+                    logger.info("Tier 1 passed, running Tier 2 (RMLMapper)")
+                    self._state = validate_node(
+                        self._state,
+                        rmlmapper_jar=self._config.rml.rmlmapper_jar,
+                        use_docker=self._config.rml.rmlmapper_use_docker,
+                    )
+
+                # If all validation passed, move to PREVIEW
                 if self._state.current_state == FlowState.PREVIEW:
                     self._state = preview_node(self._state)
 
-                # If validation failed, loop back to propose with error context
+                # If Tier 2 failed, escalate to user via REFINE → PROPOSE
                 elif self._state.current_state == FlowState.REFINE:
                     logger.info("Validation failed, refining mapping")
                     self._state = propose_node(self._state, self._ai_service)
@@ -376,6 +382,59 @@ class MappingFlow:
             self._state = propose_node(self._state, self._ai_service)
 
         return self._state
+
+    def _run_tier1_with_retries(self) -> None:
+        """Run Tier 1 syntax validation with automatic retries.
+
+        On syntax failure, re-runs generate_node with the error in context
+        up to MAX_SYNTAX_RETRIES times. If all retries are exhausted,
+        escalates to the user via REFINE → PROPOSE.
+
+        Mutates self._state in place.
+        """
+        self._state.validation_retry_count = 0
+
+        while self._state.validation_retry_count < MAX_SYNTAX_RETRIES:
+            self._state = syntax_check_node(self._state)
+
+            if self._state.current_state == FlowState.VALIDATE:
+                # Syntax check passed — proceed to Tier 2
+                logger.info(
+                    f"Tier 1 passed on attempt "
+                    f"{self._state.validation_retry_count + 1}"
+                )
+                return
+
+            # Syntax check failed — increment and retry
+            self._state.validation_retry_count += 1
+            logger.warning(
+                f"Tier 1 syntax check failed, retry "
+                f"{self._state.validation_retry_count}/{MAX_SYNTAX_RETRIES}"
+            )
+
+            if self._state.validation_retry_count < MAX_SYNTAX_RETRIES:
+                # Re-generate with error context
+                self._state.current_state = FlowState.GENERATE
+                self._state = generate_node(self._state, self._ai_service)
+
+                if self._state.current_state == FlowState.ERROR:
+                    return
+
+        # Max retries exhausted — escalate to user
+        logger.warning(
+            f"Tier 1 failed after {MAX_SYNTAX_RETRIES} attempts, "
+            "escalating to user"
+        )
+        self._state.add_message(
+            "assistant",
+            f"I was unable to fix the syntax error after "
+            f"{MAX_SYNTAX_RETRIES} attempts. "
+            f"Please help me resolve this issue:\n\n"
+            f"{self._state.validation_error}",
+        )
+        self._state.current_state = FlowState.REFINE
+        if self._state.mapping_proposal:
+            self._state.mapping_proposal.status = "refining"
 
     def _handle_pr_confirmation(self, user_input: str) -> GraphState:
         """Handle user confirmation for PR creation.

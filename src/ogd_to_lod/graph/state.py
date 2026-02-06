@@ -115,6 +115,7 @@ class GraphState:
     generated_rml: str | None = None
     rdf_preview: str | None = None
     validation_error: str | None = None
+    validation_retry_count: int = 0
 
     # PR info (populated in CREATE_PR state)
     pr_url: str | None = None
@@ -155,6 +156,7 @@ class GraphState:
             "generated_rml": self.generated_rml,
             "rdf_preview": self.rdf_preview,
             "validation_error": self.validation_error,
+            "validation_retry_count": self.validation_retry_count,
             "pr_url": self.pr_url,
             "pr_number": self.pr_number,
             "messages": self.messages,

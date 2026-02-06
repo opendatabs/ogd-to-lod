@@ -20,7 +20,8 @@ rml:
   base_uri: "https://ld.stadt-zuerich.ch/statistics/"
   # RMLMapper configuration for validation
   # Path to RMLMapper JAR file (can also be set via RMLMAPPER_JAR env var)
-  # rmlmapper_jar: "/path/to/rmlmapper.jar"
+  # Run scripts/setup-rmlmapper.sh to download automatically
+  rmlmapper_jar: "tools/rmlmapper.jar"
   # Use Docker instead of JAR (set to true if you have Docker installed)
   rmlmapper_use_docker: false
   # Docker image to use (only if rmlmapper_use_docker is true)

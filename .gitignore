@@ -64,7 +64,11 @@ dmypy.json
 .DS_Store
 Thumbs.db
 
+# Claude Code
+.claude/
+
 # Project specific
+tools/
 *.rml.ttl
 *.output.ttl
 temp/

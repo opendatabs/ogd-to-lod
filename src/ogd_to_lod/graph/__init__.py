@@ -2,6 +2,7 @@
 
 from ogd_to_lod.graph.flow import MappingFlow
 from ogd_to_lod.graph.nodes import (
+    MAX_SYNTAX_RETRIES,
     analyze_node,
     create_pr_node,
     generate_node,
@@ -9,6 +10,7 @@ from ogd_to_lod.graph.nodes import (
     init_node,
     preview_node,
     propose_node,
+    syntax_check_node,
 )
 from ogd_to_lod.graph.state import (
     DimensionProposal,
@@ -30,6 +32,7 @@ __all__ = [
     # Flow
     "MappingFlow",
     # Nodes
+    "MAX_SYNTAX_RETRIES",
     "analyze_node",
     "create_pr_node",
     "generate_node",
@@ -37,4 +40,5 @@ __all__ = [
     "init_node",
     "preview_node",
     "propose_node",
+    "syntax_check_node",
 ]
