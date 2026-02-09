@@ -8,7 +8,7 @@ This tool helps transform Open Government Data (OGD) CSV files into Linked Open 
 
 1. Analyzing CSV structure and DCAT metadata
 2. Using AI to propose RML mappings targeting cube.link and schema.org vocabularies
-3. Validating mappings with RMLMapper
+3. Validating mappings with RMLMapper (two-tier: syntax check + data-aware execution)
 4. Creating GitHub PRs with the generated mappings
 
 ## Installation
@@ -125,7 +125,7 @@ ogd-to-lod/
 │   ├── graph/           # LangGraph conversation flow
 │   ├── rml/            # RML generation (prompts, AI-driven generator)
 │   ├── github/          # GitHub PR creation
-│   └── validation/      # Two-tier RML validation (syntax + RMLMapper)
+│   └── validation/      # Two-tier RML validation (syntax + RMLMapper + empty-output detection)
 ├── tests/
 ├── config/
 │   └── config.yaml

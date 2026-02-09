@@ -418,6 +418,34 @@ class RMLValidator:
             f"RMLMapper validation failed: {error_message[:200]}",
         )
 
+    # ── Output analysis ─────────────────────────────────────────────────
+
+    @staticmethod
+    def _is_empty_rdf_output(rdf_output: str) -> bool:
+        """Check whether RDF output contains only prefix/base declarations.
+
+        RMLMapper exits successfully even when no triples are generated
+        (e.g. when CSV column references don't match due to a wrong
+        delimiter).  The output file will contain @prefix declarations
+        but no actual data triples.
+
+        Args:
+            rdf_output: RDF output string (Turtle format).
+
+        Returns:
+            True if the output has no data triples.
+        """
+        for line in rdf_output.splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith(("#", "@prefix", "@base")):
+                continue
+            # PREFIX / BASE (SPARQL-style declarations)
+            upper = stripped.upper()
+            if upper.startswith("PREFIX ") or upper.startswith("BASE "):
+                continue
+            return False  # Found actual content
+        return True
+
     # ── Internal helpers ─────────────────────────────────────────────────
 
     def _validate_syntax_only(self, rml_content: str) -> ValidationResult:
@@ -642,6 +670,24 @@ class RMLValidator:
         try:
             if output_file.exists():
                 rdf_output = output_file.read_text()
+
+                # Check for empty output (only prefixes, no data triples)
+                if self._is_empty_rdf_output(rdf_output):
+                    return ValidationResult(
+                        valid=False,
+                        error_message=(
+                            "RMLMapper produced no output triples "
+                            "— only prefix declarations."
+                        ),
+                        error_category="empty_output",
+                        user_friendly_error=(
+                            "The mapping executed successfully but produced "
+                            "no RDF triples. This usually means the column "
+                            "references in the mapping don't match the CSV "
+                            "headers (check delimiter, column names, and "
+                            "letter case)."
+                        ),
+                    )
 
                 warnings = None
                 if result.stderr:

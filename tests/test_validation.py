@@ -393,6 +393,161 @@ class TestValidateWithRMLMapper:
             os.unlink(jar_path)
 
 
+class TestIsEmptyRDFOutput:
+    """Tests for _is_empty_rdf_output static helper."""
+
+    def test_prefix_only_output(self):
+        """Output with only @prefix declarations is empty."""
+        output = (
+            '@prefix rml: <http://w3id.org/rml/> .\n'
+            '@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n'
+            '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n'
+        )
+        assert RMLValidator._is_empty_rdf_output(output) is True
+
+    def test_prefix_and_base_only(self):
+        """Output with @prefix and @base is still empty."""
+        output = (
+            '@base <http://example.org/> .\n'
+            '@prefix ex: <http://example.org/> .\n'
+        )
+        assert RMLValidator._is_empty_rdf_output(output) is True
+
+    def test_sparql_style_declarations(self):
+        """SPARQL-style PREFIX/BASE declarations are also empty."""
+        output = (
+            'PREFIX ex: <http://example.org/>\n'
+            'BASE <http://example.org/>\n'
+        )
+        assert RMLValidator._is_empty_rdf_output(output) is True
+
+    def test_blank_string(self):
+        """Completely empty string is empty."""
+        assert RMLValidator._is_empty_rdf_output("") is True
+
+    def test_whitespace_only(self):
+        """Whitespace-only output is empty."""
+        assert RMLValidator._is_empty_rdf_output("  \n  \n") is True
+
+    def test_comments_only(self):
+        """Output with only comments (and prefixes) is empty."""
+        output = (
+            '# This is a comment\n'
+            '@prefix ex: <http://example.org/> .\n'
+            '# Another comment\n'
+        )
+        assert RMLValidator._is_empty_rdf_output(output) is True
+
+    def test_output_with_triples(self):
+        """Output with actual triples is NOT empty."""
+        output = (
+            '@prefix ex: <http://example.org/> .\n'
+            '\n'
+            'ex:subject ex:predicate "value" .\n'
+        )
+        assert RMLValidator._is_empty_rdf_output(output) is False
+
+    def test_output_with_blank_node(self):
+        """Output with blank node triples is NOT empty."""
+        output = (
+            '@prefix ex: <http://example.org/> .\n'
+            '\n'
+            '_:b0 ex:predicate "value" .\n'
+        )
+        assert RMLValidator._is_empty_rdf_output(output) is False
+
+    def test_realistic_rmlmapper_empty(self):
+        """Realistic RMLMapper output that is empty (from user's report)."""
+        output = (
+            '@prefix cube: <https://cube.link/> .\n'
+            '@prefix ex: <https://ld.stadt-zuerich.ch/statistics/> .\n'
+            '@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n'
+            '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n'
+            '@prefix rml: <http://w3id.org/rml/> .\n'
+            '@prefix schema: <http://schema.org/> .\n'
+            '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n'
+        )
+        assert RMLValidator._is_empty_rdf_output(output) is True
+
+
+class TestProcessResultEmptyOutput:
+    """Tests for _process_result detecting empty RMLMapper output."""
+
+    def test_prefix_only_output_is_invalid(self):
+        """_process_result returns valid=False when output has only prefixes."""
+        prefix_only = (
+            '@prefix ex: <http://example.org/> .\n'
+            '@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n'
+        )
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".ttl", delete=False
+        ) as f:
+            f.write(prefix_only)
+            output_path = Path(f.name)
+
+        try:
+            validator = RMLValidator()
+            completed = subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="", stderr="",
+            )
+            result = validator._process_result(completed, output_path)
+
+            assert result.valid is False
+            assert result.error_category == "empty_output"
+            assert "no output triples" in result.error_message.lower()
+            assert result.user_friendly_error is not None
+        finally:
+            output_path.unlink()
+
+    def test_output_with_triples_is_valid(self):
+        """_process_result returns valid=True when output contains triples."""
+        rdf_with_data = (
+            '@prefix ex: <http://example.org/> .\n'
+            '\n'
+            'ex:obs1 a ex:Observation ;\n'
+            '  ex:value "42" .\n'
+        )
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".ttl", delete=False
+        ) as f:
+            f.write(rdf_with_data)
+            output_path = Path(f.name)
+
+        try:
+            validator = RMLValidator()
+            completed = subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="", stderr="",
+            )
+            result = validator._process_result(completed, output_path)
+
+            assert result.valid is True
+            assert result.rdf_output == rdf_with_data
+        finally:
+            output_path.unlink()
+
+    def test_empty_file_is_invalid(self):
+        """_process_result returns valid=False for a completely empty file."""
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".ttl", delete=False
+        ) as f:
+            f.write("")
+            output_path = Path(f.name)
+
+        try:
+            validator = RMLValidator()
+            completed = subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="", stderr="",
+            )
+            result = validator._process_result(completed, output_path)
+
+            assert result.valid is False
+            assert result.error_category == "empty_output"
+        finally:
+            output_path.unlink()
+
+
 class TestSampleCSVExtraction:
     """Tests for _extract_sample_csv and _get_rml_source_filename."""
 
