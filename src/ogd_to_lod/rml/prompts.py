@@ -10,6 +10,8 @@ Always use the following standard prefixes:
 - @prefix rr: <http://www.w3.org/ns/r2rml#> .
 - @prefix rml: <http://semweb.mmlab.be/ns/rml#> .
 - @prefix ql: <http://semweb.mmlab.be/ns/ql#> .
+- @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+- @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 - @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 - @prefix schema: <http://schema.org/> .
 - @prefix cube: <https://cube.link/> .
@@ -90,6 +92,18 @@ Do not include explanations outside the code block.
 ```turtle
 # Your RML mapping here
 ```
+"""
+
+RML_CORRECTION_PROMPT = """\
+The RML Turtle you generated has a syntax error. Please fix it.
+
+## Error
+{error_message}
+
+## Instructions
+- Fix ONLY the issue described above.
+- Return the complete corrected RML in a fenced ```turtle``` code block.
+- Do NOT change anything else about the mapping.
 """
 
 RML_VALIDATION_PROMPT = """\

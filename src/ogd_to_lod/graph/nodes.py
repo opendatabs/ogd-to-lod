@@ -691,6 +691,47 @@ def syntax_check_node(state: GraphState) -> GraphState:
     return state
 
 
+def regenerate_node(state: GraphState, ai_service: AIService) -> GraphState:
+    """Regenerate RML by sending the validation error back to the AI.
+
+    Uses the error stored in ``state.validation_error`` (set by
+    ``syntax_check_node``) to give the AI targeted feedback.  Updates
+    ``state.generated_rml`` with the corrected output.
+
+    Args:
+        state: Current graph state with validation_error set.
+        ai_service: AI service for regenerating RML.
+
+    Returns:
+        Updated state with corrected RML.
+    """
+    logger.info("Entering REGENERATE state (error-aware retry)")
+
+    error_message = state.validation_error or "Unknown syntax error"
+
+    try:
+        generator = RMLGenerator(ai_service)
+        rml_content = generator.regenerate_with_error(error_message)
+
+        state.generated_rml = rml_content
+        state.add_message(
+            "assistant",
+            f"Corrected RML mapping:\n\n```turtle\n{rml_content}\n```",
+        )
+
+        logger.info(f"Regenerated RML ({len(rml_content)} characters)")
+
+        # Transition to PREVIEW so syntax_check_node can re-validate
+        state.current_state = FlowState.PREVIEW
+
+    except RMLGenerationError as e:
+        logger.error(f"RML regeneration failed: {e}")
+        state.error_message = f"Failed to regenerate RML: {e}"
+        state.current_state = FlowState.ERROR
+
+    return state
+
+
 def validate_node(
     state: GraphState,
     rmlmapper_jar: str | None = None,

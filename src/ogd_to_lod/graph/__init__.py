@@ -10,6 +10,7 @@ from ogd_to_lod.graph.nodes import (
     init_node,
     preview_node,
     propose_node,
+    regenerate_node,
     syntax_check_node,
 )
 from ogd_to_lod.graph.state import (
@@ -40,5 +41,6 @@ __all__ = [
     "init_node",
     "preview_node",
     "propose_node",
+    "regenerate_node",
     "syntax_check_node",
 ]

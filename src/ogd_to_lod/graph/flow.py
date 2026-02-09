@@ -17,6 +17,7 @@ from .nodes import (
     init_node,
     preview_node,
     propose_node,
+    regenerate_node,
     syntax_check_node,
     validate_node,
 )
@@ -415,7 +416,7 @@ class MappingFlow:
             if self._state.validation_retry_count < MAX_SYNTAX_RETRIES:
                 # Re-generate with error context
                 self._state.current_state = FlowState.GENERATE
-                self._state = generate_node(self._state, self._ai_service)
+                self._state = regenerate_node(self._state, self._ai_service)
 
                 if self._state.current_state == FlowState.ERROR:
                     return
