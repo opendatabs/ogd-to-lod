@@ -16,7 +16,12 @@ This tool helps transform Open Government Data (OGD) CSV files into Linked Open 
 ### Prerequisites
 
 - Python 3.11+
-- Java (for RMLMapper validation)
+- Java (optional, for RMLMapper validation)
+
+To set up RMLMapper for full validation:
+```bash
+./scripts/setup-rmlmapper.sh
+```
 
 ### Setup
 
@@ -88,6 +93,8 @@ ogd-to-lod <csv_path> <dcat_path>
 ### Options
 
 - `--config`, `-c`: Path to configuration file (default: `config/config.yaml`)
+- `--output`, `-o`: Path to save the generated RML mapping (Turtle format)
+- `--base-uri`, `-b`: Base URI for generated resources (overrides config)
 - `--help`: Show help message
 
 ## Development
@@ -116,11 +123,13 @@ ogd-to-lod/
 │   ├── parsers/         # CSV and DCAT parsers
 │   ├── ai/              # Azure OpenAI integration
 │   ├── graph/           # LangGraph conversation flow
+│   ├── rml/            # RML generation (prompts, AI-driven generator)
 │   ├── github/          # GitHub PR creation
-│   └── validation/      # RML validation
+│   └── validation/      # Two-tier RML validation (syntax + RMLMapper)
 ├── tests/
 ├── config/
 │   └── config.yaml
+├── scripts/             # Utility scripts (RMLMapper setup, worktrees)
 ├── pyproject.toml
 └── README.md
 ```
