@@ -38,6 +38,12 @@ def sample_rml(data_dir):
     return (data_dir / "sample.rml.ttl").read_text()
 
 
+@pytest.fixture(scope="session")
+def sample_csvw_rml(data_dir):
+    """RML Turtle content using CSVW dialect for semicolon-delimited CSV."""
+    return (data_dir / "sample_csvw.rml.ttl").read_text()
+
+
 # ── RMLMapper availability fixtures (for integration tests) ────────────
 
 @pytest.fixture(scope="session")

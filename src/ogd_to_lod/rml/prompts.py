@@ -10,6 +10,7 @@ Always use the following standard prefixes:
 - @prefix rr: <http://www.w3.org/ns/r2rml#> .
 - @prefix rml: <http://semweb.mmlab.be/ns/rml#> .
 - @prefix ql: <http://semweb.mmlab.be/ns/ql#> .
+- @prefix csvw: <http://www.w3.org/ns/csvw#> .
 - @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 - @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 - @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
@@ -49,6 +50,29 @@ Instead, use prefixed names like `ex:LogicalSource` or `ex:TriplesMap`.
 
 ## CSV Source Configuration
 The CSV source file path is: {csv_path}
+
+## CSV Delimiter
+The detected CSV delimiter is: {csv_delimiter}
+
+If the delimiter is a comma (`,`), use the simple form for the logical source:
+```
+rml:source "{csv_path}";
+rml:referenceFormulation ql:CSV
+```
+
+If the delimiter is NOT a comma (e.g. `;` or `\\t`), you MUST use the CSVW dialect \
+form so that RMLMapper knows how to parse the file:
+```
+rml:source [
+  a csvw:Table;
+  csvw:url "{csv_path}";
+  csvw:dialect [ a csvw:Dialect; csvw:delimiter "{csv_delimiter}" ]
+];
+rml:referenceFormulation ql:CSV
+```
+
+Only include the csvw prefix declaration (`@prefix csvw: ...`) when the delimiter \
+is not a comma.
 
 ## Approved Mapping Proposal
 {mapping_proposal}

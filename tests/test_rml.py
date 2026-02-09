@@ -122,6 +122,29 @@ class TestRMLGenerator:
         assert "cube:Observation" in result
         mock_ai_service.send_message.assert_called_once()
 
+    def test_generate_passes_delimiter_to_prompt(self, mock_ai_service, sample_mapping_proposal):
+        """Test that generate() passes csv_delimiter to the prompt."""
+        generator = RMLGenerator(mock_ai_service)
+
+        schema_with_semicolon = {
+            "source": "data.csv",
+            "columns": [{"name": "year", "type": "int", "samples": [2020]}],
+            "total_rows": 10,
+            "delimiter": ";",
+        }
+
+        generator.generate(
+            mapping_proposal=sample_mapping_proposal,
+            csv_schema=schema_with_semicolon,
+            csv_path="/path/to/data.csv",
+            base_uri="https://example.org/",
+        )
+
+        # The prompt sent to AI should contain the semicolon delimiter
+        call_args = mock_ai_service.send_message.call_args[0][0]
+        assert ";" in call_args
+        assert "detected CSV delimiter" in call_args
+
     def test_generate_no_turtle_block(self, mock_ai_service, sample_mapping_proposal, sample_csv_schema):
         """Test generation fails when no Turtle block is returned."""
         mock_ai_service.send_message.return_value = "Here is some text without any code block."
@@ -177,6 +200,31 @@ class TestRMLGenerator:
         assert "year (int)" in result
         assert "region (string)" in result
         assert "value (float)" in result
+
+    def test_format_schema_includes_delimiter(self, mock_ai_service):
+        """Test that _format_schema includes the delimiter info."""
+        generator = RMLGenerator(mock_ai_service)
+
+        schema_semicolon = {
+            "source": "data.csv",
+            "columns": [{"name": "col", "type": "string", "samples": ["a"]}],
+            "total_rows": 10,
+            "delimiter": ";",
+        }
+        result = generator._format_schema(schema_semicolon)
+        assert "Delimiter: ';'" in result
+
+    def test_format_schema_default_delimiter(self, mock_ai_service):
+        """Test that _format_schema defaults to comma when delimiter absent."""
+        generator = RMLGenerator(mock_ai_service)
+
+        schema_no_delim = {
+            "source": "data.csv",
+            "columns": [{"name": "col", "type": "string", "samples": ["a"]}],
+            "total_rows": 10,
+        }
+        result = generator._format_schema(schema_no_delim)
+        assert "Delimiter: ','" in result
 
 
 class TestGenerateRMLFunction:
@@ -317,6 +365,20 @@ class TestRMLPrompts:
         assert "{csv_path}" in RML_GENERATION_PROMPT
         assert "{mapping_proposal}" in RML_GENERATION_PROMPT
         assert "{csv_schema}" in RML_GENERATION_PROMPT
+        assert "{csv_delimiter}" in RML_GENERATION_PROMPT
+
+    def test_prompt_has_csvw_prefix(self):
+        """Test that the prompt includes the csvw prefix."""
+        assert "csvw:" in RML_GENERATION_PROMPT
+        assert "http://www.w3.org/ns/csvw#" in RML_GENERATION_PROMPT
+
+    def test_prompt_has_csvw_delimiter_section(self):
+        """Test that the prompt includes CSVW delimiter instructions."""
+        assert "CSV Delimiter" in RML_GENERATION_PROMPT
+        assert "csvw:Table" in RML_GENERATION_PROMPT
+        assert "csvw:url" in RML_GENERATION_PROMPT
+        assert "csvw:Dialect" in RML_GENERATION_PROMPT
+        assert "csvw:delimiter" in RML_GENERATION_PROMPT
 
     def test_prompt_mentions_cube_link(self):
         """Test that the prompt mentions cube.link vocabulary."""
@@ -438,6 +500,24 @@ class TestEnsureCommonPrefixes:
         turtle = '@prefix rr: <http://www.w3.org/ns/r2rml#> .\nex:Thing rr:class "Foo" .\n'
         result = RMLGenerator.ensure_common_prefixes(turtle)
         assert result == turtle
+
+    def test_injects_missing_csvw(self):
+        """Test that missing csvw: prefix is injected when used."""
+        turtle = (
+            '@prefix rml: <http://semweb.mmlab.be/ns/rml#> .\n'
+            'rml:source [ a csvw:Table; csvw:url "data.csv" ] .\n'
+        )
+        result = RMLGenerator.ensure_common_prefixes(turtle)
+        assert "@prefix csvw: <http://www.w3.org/ns/csvw#> ." in result
+
+    def test_no_csvw_injection_when_unused(self):
+        """Test that csvw: prefix is not injected when not used."""
+        turtle = (
+            '@prefix rml: <http://semweb.mmlab.be/ns/rml#> .\n'
+            'ex:Map rml:source "data.csv" .\n'
+        )
+        result = RMLGenerator.ensure_common_prefixes(turtle)
+        assert "csvw" not in result
 
 
 class TestRegenerateNode:

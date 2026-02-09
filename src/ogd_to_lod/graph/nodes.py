@@ -94,6 +94,7 @@ def analyze_node(state: GraphState, config: Config) -> GraphState:
             ],
             "total_rows": csv_data.total_rows,
             "sample_rows": csv_data.sample_rows[:3],
+            "delimiter": csv_data.delimiter,
         }
         logger.debug(f"Parsed CSV with {len(csv_data.columns)} columns")
     except CSVParseError as e:
@@ -557,6 +558,8 @@ def _build_ai_context(state: GraphState) -> str:
     if state.csv_schema:
         lines.append("## CSV Schema")
         lines.append(f"Total rows: {state.csv_schema.get('total_rows', 0)}")
+        delimiter = state.csv_schema.get("delimiter", ",")
+        lines.append(f"Delimiter: {repr(delimiter)}")
         lines.append("")
         lines.append("Columns:")
         for col in state.csv_schema.get("columns", []):
