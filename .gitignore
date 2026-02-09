@@ -74,3 +74,7 @@ tools/
 temp/
 tmp/
 data/
+
+# Test fixtures (override data/ and *.rml.ttl rules above)
+!tests/data/
+!tests/data/**

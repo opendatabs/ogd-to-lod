@@ -1,5 +1,6 @@
 """RML generation using AI service."""
 
+from pathlib import Path
 from typing import Any
 
 from ogd_to_lod.ai import AIService
@@ -57,10 +58,11 @@ class RMLGenerator:
         proposal_text = self._format_proposal(mapping_proposal)
         schema_text = self._format_schema(csv_schema)
 
-        # Build the prompt
+        # Build the prompt — use only the CSV basename so that the generated
+        # rml:source value is a plain filename (validation runs in a temp dir).
         prompt = RML_GENERATION_PROMPT.format(
             base_uri=base_uri,
-            csv_path=csv_path,
+            csv_path=Path(csv_path).name,
             mapping_proposal=proposal_text,
             csv_schema=schema_text,
         )

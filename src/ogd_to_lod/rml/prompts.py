@@ -21,8 +21,9 @@ For example, if the mapping uses dimensions, measures, and observations:
 - @prefix ex-measure: <{base_uri}measure/> .
 - @prefix ex-obs: <{base_uri}observation/> .
 
-## CRITICAL: Turtle Syntax Rule for Prefixed Names
+## CRITICAL: Turtle Syntax Rules
 
+### No `/` in prefixed name local parts
 The `/` character is NOT allowed in the local part of a prefixed name. \
 This is a hard constraint of the W3C Turtle grammar (PN_LOCAL production).
 
@@ -38,6 +39,11 @@ CORRECT — use sub-prefixes instead:
 
 You MUST define a sub-prefix for every sub-path and use it consistently. \
 Never write a prefixed name that contains `/` in the local part.
+
+### No relative IRIs (e.g. <#Name>)
+Do NOT use relative IRIs such as `<#LogicalSource>` or `<#TriplesMap>`. \
+RMLMapper uses RDF4J which rejects relative IRIs without a @base directive. \
+Instead, use prefixed names like `ex:LogicalSource` or `ex:TriplesMap`.
 
 ## CSV Source Configuration
 The CSV source file path is: {csv_path}

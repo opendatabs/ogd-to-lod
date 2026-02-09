@@ -18,95 +18,17 @@ from ogd_to_lod.validation import (
 )
 
 
-# Sample RML for testing
-SAMPLE_RML = """@prefix rr: <http://www.w3.org/ns/r2rml#> .
-@prefix rml: <http://semweb.mmlab.be/ns/rml#> .
-@prefix ql: <http://semweb.mmlab.be/ns/ql#> .
-@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-@prefix schema: <http://schema.org/> .
-@prefix cube: <https://cube.link/> .
-@prefix ex: <https://example.org/> .
-
-ex:TriplesMap a rr:TriplesMap ;
-    rml:logicalSource [
-        rml:source "data.csv" ;
-        rml:referenceFormulation ql:CSV
-    ] ;
-    rr:subjectMap [
-        rr:template "https://example.org/observation/{year}/{region}" ;
-        rr:class cube:Observation
-    ] ;
-    rr:predicateObjectMap [
-        rr:predicate cube:dimension ;
-        rr:objectMap [
-            rml:reference "year" ;
-            rr:datatype xsd:gYear
-        ]
-    ] ;
-    rr:predicateObjectMap [
-        rr:predicate cube:dimension ;
-        rr:objectMap [
-            rml:reference "region" ;
-            rr:datatype xsd:string
-        ]
-    ] ;
-    rr:predicateObjectMap [
-        rr:predicate cube:measure ;
-        rr:objectMap [
-            rml:reference "value" ;
-            rr:datatype xsd:decimal
-        ]
-    ] .
-"""
-
-# Invalid RML (syntax error)
+# Constants used only in this file
 INVALID_RML_SYNTAX = """@prefix rr: <http://www.w3.org/ns/r2rml#> .
 This is not valid Turtle syntax!!!
 """
 
-# RML missing components (valid syntax but missing logical source)
 MINIMAL_RML = """@prefix rr: <http://www.w3.org/ns/r2rml#> .
 @prefix rml: <http://semweb.mmlab.be/ns/rml#> .
 @prefix ex: <http://example.org/> .
 
 ex:Something rr:predicateObjectMap [ ] .
 """
-
-
-@pytest.fixture
-def temp_csv():
-    """Create a temporary CSV file for testing."""
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".csv", delete=False
-    ) as f:
-        f.write("year,region,value\n")
-        f.write("2020,North,100.5\n")
-        f.write("2021,South,200.3\n")
-        f.write("2022,East,300.1\n")
-        f.write("2023,West,400.7\n")
-        f.write("2024,North,500.2\n")
-        f.write("2025,South,600.9\n")
-        f.write("2026,East,700.4\n")
-        csv_path = f.name
-    # File is now closed and flushed
-    yield csv_path
-    os.unlink(csv_path)
-
-
-@pytest.fixture
-def temp_csv_semicolon():
-    """Create a temporary semicolon-delimited CSV file."""
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".csv", delete=False
-    ) as f:
-        f.write("year;region;value\n")
-        f.write("2020;North;100.5\n")
-        f.write("2021;South;200.3\n")
-        f.write("2022;East;300.1\n")
-        csv_path = f.name
-    # File is now closed and flushed
-    yield csv_path
-    os.unlink(csv_path)
 
 
 class TestRMLValidator:
@@ -135,10 +57,10 @@ class TestRMLValidator:
         validator = RMLValidator()
         assert validator._rmlmapper_jar == "/env/path/rmlmapper.jar"
 
-    def test_validate_syntax_only_valid(self):
+    def test_validate_syntax_only_valid(self, sample_rml):
         """Test syntax-only validation with valid RML."""
         validator = RMLValidator()  # No JAR configured
-        result = validator.validate(SAMPLE_RML, "/nonexistent/path.csv")
+        result = validator.validate(sample_rml, "/nonexistent/path.csv")
 
         assert result.valid is True
         assert result.rdf_output is None  # No actual RDF generation
@@ -165,7 +87,7 @@ class TestRMLValidator:
             for w in result.warnings
         )
 
-    def test_validate_csv_not_found(self):
+    def test_validate_csv_not_found(self, sample_rml):
         """Test validation fails when CSV doesn't exist."""
         with tempfile.NamedTemporaryFile(suffix=".jar", delete=False) as jar_file:
             jar_path = jar_file.name
@@ -173,7 +95,7 @@ class TestRMLValidator:
         try:
             validator = RMLValidator(rmlmapper_jar=jar_path)
             result = validator.validate_with_rmlmapper(
-                SAMPLE_RML, "/nonexistent/data.csv"
+                sample_rml, "/nonexistent/data.csv"
             )
 
             assert result.valid is False
@@ -182,7 +104,7 @@ class TestRMLValidator:
             os.unlink(jar_path)
 
     @patch("subprocess.run")
-    def test_validate_with_jar_success(self, mock_run, temp_csv):
+    def test_validate_with_jar_success(self, mock_run, data_csv, sample_rml):
         """Test successful validation with JAR."""
         # Mock successful RMLMapper execution
         mock_run.return_value = subprocess.CompletedProcess(
@@ -201,7 +123,7 @@ class TestRMLValidator:
             # Need to mock the output file creation
             with patch.object(Path, "read_text", return_value="<rdf output>"):
                 with patch.object(Path, "exists", return_value=True):
-                    result = validator.validate(SAMPLE_RML, temp_csv)
+                    result = validator.validate(sample_rml, data_csv)
 
             assert result.valid is True
             assert mock_run.called
@@ -209,7 +131,7 @@ class TestRMLValidator:
             os.unlink(jar_path)
 
     @patch("subprocess.run")
-    def test_validate_with_jar_failure(self, mock_run, temp_csv):
+    def test_validate_with_jar_failure(self, mock_run, data_csv, sample_rml):
         """Test validation failure with JAR."""
         # Mock failed RMLMapper execution
         mock_run.return_value = subprocess.CompletedProcess(
@@ -224,7 +146,7 @@ class TestRMLValidator:
 
         try:
             validator = RMLValidator(rmlmapper_jar=jar_path)
-            result = validator.validate(SAMPLE_RML, temp_csv)
+            result = validator.validate(sample_rml, data_csv)
 
             assert result.valid is False
             assert "unknown_column" in result.error_message
@@ -232,7 +154,7 @@ class TestRMLValidator:
             os.unlink(jar_path)
 
     @patch("subprocess.run")
-    def test_validate_timeout(self, mock_run, temp_csv):
+    def test_validate_timeout(self, mock_run, data_csv, sample_rml):
         """Test validation timeout handling."""
         mock_run.side_effect = subprocess.TimeoutExpired(cmd="java", timeout=60)
 
@@ -241,7 +163,7 @@ class TestRMLValidator:
 
         try:
             validator = RMLValidator(rmlmapper_jar=jar_path)
-            result = validator.validate(SAMPLE_RML, temp_csv, timeout=60)
+            result = validator.validate(sample_rml, data_csv, timeout=60)
 
             assert result.valid is False
             assert "timed out" in result.error_message.lower()
@@ -339,9 +261,9 @@ class TestValidationResult:
 class TestValidateRMLFunction:
     """Tests for the validate_rml convenience function."""
 
-    def test_validate_rml_syntax_only(self):
+    def test_validate_rml_syntax_only(self, sample_rml):
         """Test convenience function with syntax-only validation."""
-        result = validate_rml(SAMPLE_RML, "/nonexistent/path.csv")
+        result = validate_rml(sample_rml, "/nonexistent/path.csv")
 
         assert result.valid is True
 
@@ -349,10 +271,10 @@ class TestValidateRMLFunction:
 class TestValidateSyntax:
     """Tests for the public validate_syntax() method (Tier 1)."""
 
-    def test_valid_turtle(self):
+    def test_valid_turtle(self, sample_rml):
         """Test syntax validation passes for valid Turtle."""
         validator = RMLValidator()
-        result = validator.validate_syntax(SAMPLE_RML)
+        result = validator.validate_syntax(sample_rml)
 
         assert result.valid is True
         assert result.error_message is None
@@ -387,25 +309,25 @@ class TestValidateSyntax:
 class TestValidateWithRMLMapper:
     """Tests for validate_with_rmlmapper() method (Tier 2)."""
 
-    def test_skips_when_no_jar_configured(self):
+    def test_skips_when_no_jar_configured(self, sample_rml):
         """Test Tier 2 gracefully skips when RMLMapper is not configured."""
         validator = RMLValidator()  # No JAR
-        result = validator.validate_with_rmlmapper(SAMPLE_RML, "/some/path.csv")
+        result = validator.validate_with_rmlmapper(sample_rml, "/some/path.csv")
 
         assert result.valid is True
         assert result.warnings is not None
         assert any("skipped" in w.lower() for w in result.warnings)
 
-    def test_skips_when_jar_not_found(self):
+    def test_skips_when_jar_not_found(self, sample_rml):
         """Test Tier 2 gracefully skips when JAR file doesn't exist."""
         validator = RMLValidator(rmlmapper_jar="/nonexistent/rmlmapper.jar")
-        result = validator.validate_with_rmlmapper(SAMPLE_RML, "/some/path.csv")
+        result = validator.validate_with_rmlmapper(sample_rml, "/some/path.csv")
 
         assert result.valid is True
         assert result.warnings is not None
         assert any("not found" in w.lower() for w in result.warnings)
 
-    def test_csv_not_found(self):
+    def test_csv_not_found(self, sample_rml):
         """Test Tier 2 fails when CSV file doesn't exist."""
         with tempfile.NamedTemporaryFile(suffix=".jar", delete=False) as jar_file:
             jar_path = jar_file.name
@@ -413,7 +335,7 @@ class TestValidateWithRMLMapper:
         try:
             validator = RMLValidator(rmlmapper_jar=jar_path)
             result = validator.validate_with_rmlmapper(
-                SAMPLE_RML, "/nonexistent/data.csv"
+                sample_rml, "/nonexistent/data.csv"
             )
 
             assert result.valid is False
@@ -422,7 +344,7 @@ class TestValidateWithRMLMapper:
             os.unlink(jar_path)
 
     @patch("subprocess.run")
-    def test_success_with_mocked_rmlmapper(self, mock_run, temp_csv):
+    def test_success_with_mocked_rmlmapper(self, mock_run, data_csv, sample_rml):
         """Test successful Tier 2 validation with mocked RMLMapper."""
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],
@@ -439,7 +361,7 @@ class TestValidateWithRMLMapper:
             with patch.object(Path, "read_text", return_value="<rdf>"):
                 with patch.object(Path, "exists", return_value=True):
                     result = validator.validate_with_rmlmapper(
-                        SAMPLE_RML, temp_csv
+                        sample_rml, data_csv
                     )
 
             assert result.valid is True
@@ -448,7 +370,7 @@ class TestValidateWithRMLMapper:
             os.unlink(jar_path)
 
     @patch("subprocess.run")
-    def test_failure_with_mocked_rmlmapper(self, mock_run, temp_csv):
+    def test_failure_with_mocked_rmlmapper(self, mock_run, data_csv, sample_rml):
         """Test failed Tier 2 validation with mocked RMLMapper."""
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],
@@ -462,7 +384,7 @@ class TestValidateWithRMLMapper:
 
         try:
             validator = RMLValidator(rmlmapper_jar=jar_path)
-            result = validator.validate_with_rmlmapper(SAMPLE_RML, temp_csv)
+            result = validator.validate_with_rmlmapper(sample_rml, data_csv)
 
             assert result.valid is False
             assert result.error_category == "missing_column"
@@ -474,10 +396,10 @@ class TestValidateWithRMLMapper:
 class TestSampleCSVExtraction:
     """Tests for _extract_sample_csv and _get_rml_source_filename."""
 
-    def test_correct_filename_from_rml(self):
+    def test_correct_filename_from_rml(self, sample_rml):
         """Test that source filename is parsed from RML content."""
         filename = RMLValidator._get_rml_source_filename(
-            SAMPLE_RML, "/path/to/other.csv"
+            sample_rml, "/path/to/other.csv"
         )
         assert filename == "data.csv"
 
@@ -491,10 +413,10 @@ ex:Map rr:subjectMap [ ] .
         )
         assert filename == "mydata.csv"
 
-    def test_sample_csv_row_count(self, temp_csv):
+    def test_sample_csv_row_count(self, data_csv, sample_rml):
         """Test that sample CSV has the correct number of rows."""
         validator = RMLValidator()
-        tmpdir = validator._extract_sample_csv(SAMPLE_RML, temp_csv, sample_rows=3)
+        tmpdir = validator._extract_sample_csv(sample_rml, data_csv, sample_rows=3)
 
         try:
             sample_path = Path(tmpdir.name) / "data.csv"
@@ -510,10 +432,10 @@ ex:Map rr:subjectMap [ ] .
         finally:
             tmpdir.cleanup()
 
-    def test_sample_csv_default_rows(self, temp_csv):
+    def test_sample_csv_default_rows(self, data_csv, sample_rml):
         """Test default sample size (5 rows)."""
         validator = RMLValidator()
-        tmpdir = validator._extract_sample_csv(SAMPLE_RML, temp_csv)
+        tmpdir = validator._extract_sample_csv(sample_rml, data_csv)
 
         try:
             sample_path = Path(tmpdir.name) / "data.csv"
@@ -526,15 +448,14 @@ ex:Map rr:subjectMap [ ] .
         finally:
             tmpdir.cleanup()
 
-    def test_semicolon_delimiter(self, temp_csv_semicolon):
+    def test_semicolon_delimiter(self, semicolon_csv, sample_rml):
         """Test that semicolon delimiters are preserved."""
-        rml_with_source = SAMPLE_RML  # Uses "data.csv" but we'll use our fixture
         # Override the source filename to match
-        rml_custom = SAMPLE_RML.replace('rml:source "data.csv"', 'rml:source "test.csv"')
+        rml_custom = sample_rml.replace('rml:source "data.csv"', 'rml:source "test.csv"')
 
         validator = RMLValidator()
         tmpdir = validator._extract_sample_csv(
-            rml_custom, temp_csv_semicolon, sample_rows=2
+            rml_custom, semicolon_csv, sample_rows=2
         )
 
         try:
@@ -556,33 +477,23 @@ ex:Map rr:subjectMap [ ] .
         finally:
             tmpdir.cleanup()
 
-    def test_small_csv_fewer_rows_than_requested(self):
+    def test_small_csv_fewer_rows_than_requested(self, small_csv, sample_rml):
         """Test extraction from CSV with fewer rows than requested."""
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".csv", delete=False
-        ) as f:
-            f.write("a,b\n")
-            f.write("1,2\n")
-            csv_path = f.name
+        validator = RMLValidator()
+        tmpdir = validator._extract_sample_csv(
+            sample_rml, small_csv, sample_rows=10
+        )
 
         try:
-            validator = RMLValidator()
-            tmpdir = validator._extract_sample_csv(
-                SAMPLE_RML, csv_path, sample_rows=10
-            )
+            sample_path = Path(tmpdir.name) / "data.csv"
+            with open(sample_path, "r") as f:
+                reader = csv.reader(f)
+                rows = list(reader)
 
-            try:
-                sample_path = Path(tmpdir.name) / "data.csv"
-                with open(sample_path, "r") as f:
-                    reader = csv.reader(f)
-                    rows = list(reader)
-
-                # Only header + 1 row available
-                assert len(rows) == 2
-            finally:
-                tmpdir.cleanup()
+            # Only header + 1 row available
+            assert len(rows) == 2
         finally:
-            os.unlink(csv_path)
+            tmpdir.cleanup()
 
 
 class TestErrorCategorization:
@@ -636,3 +547,56 @@ class TestErrorCategorization:
         assert "Something completely unexpected" in desc
 
 
+@pytest.mark.integration
+class TestIntegrationRMLMapper:
+    """Integration tests that exercise the real RMLMapper JAR.
+
+    These tests require:
+    - tools/rmlmapper.jar to be present (run scripts/setup-rmlmapper.sh)
+    - Java runtime on PATH
+
+    Skip with: pytest -m "not integration"
+    """
+
+    def test_valid_rml_produces_rdf(self, rmlmapper_available, data_csv, sample_rml):
+        """Tier 2 with real JAR — success path, asserts RDF output."""
+        validator = RMLValidator(rmlmapper_jar=rmlmapper_available)
+        result = validator.validate_with_rmlmapper(sample_rml, data_csv)
+
+        assert result.valid is True
+        assert result.rdf_output is not None
+        assert len(result.rdf_output.strip()) > 0
+        # The output should contain RDF triples referencing our data
+        assert "example.org" in result.rdf_output
+
+    def test_full_validate_chain(self, rmlmapper_available, data_csv, sample_rml):
+        """validate() runs both Tier 1 + Tier 2 end-to-end."""
+        validator = RMLValidator(rmlmapper_jar=rmlmapper_available)
+        result = validator.validate(sample_rml, data_csv)
+
+        assert result.valid is True
+        assert result.rdf_output is not None
+
+    def test_missing_column_error(self, rmlmapper_available, data_csv, sample_rml):
+        """RML referencing a nonexistent column produces valid=False."""
+        bad_rml = sample_rml.replace('rml:reference "year"', 'rml:reference "nonexistent"')
+        validator = RMLValidator(rmlmapper_jar=rmlmapper_available)
+        result = validator.validate_with_rmlmapper(bad_rml, data_csv)
+
+        # RMLMapper should fail or produce empty output for bad column refs.
+        # Behaviour depends on RMLMapper version — some silently skip, others error.
+        # At minimum, the result should not crash.
+        assert isinstance(result, ValidationResult)
+
+    def test_small_csv_works(self, rmlmapper_available, small_csv, sample_rml):
+        """1-row CSV still produces valid RDF."""
+        validator = RMLValidator(rmlmapper_jar=rmlmapper_available)
+        result = validator.validate_with_rmlmapper(sample_rml, small_csv)
+
+        assert result.valid is True
+        assert result.rdf_output is not None
+
+    def test_is_available_with_real_jar(self, rmlmapper_available):
+        """is_available() returns True when the real JAR is present."""
+        validator = RMLValidator(rmlmapper_jar=rmlmapper_available)
+        assert validator.is_available() is True

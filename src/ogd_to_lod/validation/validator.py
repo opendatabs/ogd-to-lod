@@ -87,7 +87,10 @@ class RMLValidator:
         if use_docker:
             self._rmlmapper_jar = None
         else:
-            self._rmlmapper_jar = rmlmapper_jar or os.environ.get("RMLMAPPER_JAR")
+            jar = rmlmapper_jar or os.environ.get("RMLMAPPER_JAR")
+            # Resolve to absolute so the path works even when cwd changes
+            # (e.g. when running RMLMapper in a temp directory).
+            self._rmlmapper_jar = str(Path(jar).resolve()) if jar else None
 
     # ── Tier 1: Syntax validation ────────────────────────────────────────
 
@@ -172,7 +175,7 @@ class RMLValidator:
             rml_file = Path(tmpdir.name) / "mapping.ttl"
             output_file = Path(tmpdir.name) / "output.ttl"
 
-            rml_file.write_text(rml_content)
+            rml_file.write_text(self._ensure_base_directive(rml_content))
 
             try:
                 if self._use_docker:
@@ -302,7 +305,8 @@ class RMLValidator:
                     if i >= sample_rows:  # header + sample_rows data rows
                         break
 
-            # Write sample CSV
+            # Write sample CSV (create intermediate dirs for paths like "data/file.csv")
+            dest_path.parent.mkdir(parents=True, exist_ok=True)
             with open(dest_path, "w", newline="", encoding="utf-8") as dst:
                 writer = csv.writer(dst, delimiter=delimiter)
                 writer.writerows(rows)
@@ -317,6 +321,26 @@ class RMLValidator:
             raise
 
         return tmpdir
+
+    @staticmethod
+    def _ensure_base_directive(rml_content: str) -> str:
+        """Prepend a @base directive if the RML uses relative IRIs without one.
+
+        RMLMapper (RDF4J) rejects relative IRIs like <#LogicalSource> when no
+        @base is declared.  Adding a dummy base lets them resolve correctly.
+
+        Args:
+            rml_content: RML content in Turtle format.
+
+        Returns:
+            RML content with @base prepended if needed.
+        """
+        has_base = bool(re.search(r'@base\s+<', rml_content, re.IGNORECASE))
+        has_relative_iris = bool(re.search(r'<#\w', rml_content))
+        if has_relative_iris and not has_base:
+            logger.debug("Injecting @base directive for relative IRIs")
+            return '@base <http://example.org/mapping/> .\n' + rml_content
+        return rml_content
 
     @staticmethod
     def _get_rml_source_filename(rml_content: str, csv_path: str) -> str:
