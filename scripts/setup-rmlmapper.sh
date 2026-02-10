@@ -12,7 +12,7 @@ JAR_PATH="$TOOLS_DIR/rmlmapper.jar"
 # Check Java is available
 if ! command -v java &> /dev/null; then
     echo "Error: Java is not installed or not in PATH."
-    echo "RMLMapper requires Java 11 or later."
+    echo "RMLMapper requires Java 21 or later."
     echo "Install it with: sudo apt install default-jre  (Debian/Ubuntu)"
     echo "                  brew install openjdk          (macOS)"
     exit 1
