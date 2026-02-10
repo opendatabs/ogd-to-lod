@@ -650,6 +650,39 @@ ex:Map rr:subjectMap [ ] .
         finally:
             tmpdir.cleanup()
 
+    def test_csvw_source_filename(self, sample_csvw_rml):
+        """Test that _get_rml_source_filename parses csvw:url form."""
+        filename = RMLValidator._get_rml_source_filename(
+            sample_csvw_rml, "/path/to/fallback.csv"
+        )
+        assert filename == "semicolon.csv"
+
+    def test_extract_sample_csv_with_csvw_rml(self, semicolon_csv, sample_csvw_rml):
+        """Test sample extraction with CSVW-style RML (csvw:url)."""
+        validator = RMLValidator()
+        tmpdir = validator._extract_sample_csv(
+            sample_csvw_rml, semicolon_csv, sample_rows=2
+        )
+
+        try:
+            sample_path = Path(tmpdir.name) / "semicolon.csv"
+            assert sample_path.exists()
+
+            with open(sample_path, "r") as f:
+                content = f.read()
+
+            # Semicolon delimiter must be preserved
+            assert ";" in content
+
+            with open(sample_path, "r") as f:
+                reader = csv.reader(f, delimiter=";")
+                rows = list(reader)
+
+            assert len(rows) == 3  # header + 2 data rows
+            assert rows[0] == ["year", "region", "value"]
+        finally:
+            tmpdir.cleanup()
+
 
 class TestErrorCategorization:
     """Tests for _categorize_error."""

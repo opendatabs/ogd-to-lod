@@ -61,11 +61,13 @@ class RMLGenerator:
 
         # Build the prompt — use only the CSV basename so that the generated
         # rml:source value is a plain filename (validation runs in a temp dir).
+        csv_delimiter = csv_schema.get("delimiter", ",")
         prompt = RML_GENERATION_PROMPT.format(
             base_uri=base_uri,
             csv_path=Path(csv_path).name,
             mapping_proposal=proposal_text,
             csv_schema=schema_text,
+            csv_delimiter=csv_delimiter,
         )
 
         logger.debug("Sending RML generation prompt to AI")
@@ -165,6 +167,7 @@ class RMLGenerator:
             "dcterms": "http://purl.org/dc/terms/",
             "schema": "http://schema.org/",
             "foaf": "http://xmlns.com/foaf/0.1/",
+            "csvw": "http://www.w3.org/ns/csvw#",
         }
 
         missing: list[str] = []
@@ -247,6 +250,8 @@ class RMLGenerator:
 
         lines.append(f"Source: {schema.get('source', 'Unknown')}")
         lines.append(f"Total rows: {schema.get('total_rows', 0)}")
+        delimiter = schema.get("delimiter", ",")
+        lines.append(f"Delimiter: {repr(delimiter)}")
         lines.append("")
         lines.append("### Columns:")
 

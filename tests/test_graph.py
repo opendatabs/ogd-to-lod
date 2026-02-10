@@ -246,6 +246,49 @@ class TestAnalyzeNode:
         assert result.parsed_summary is not None
 
     @patch("ogd_to_lod.graph.nodes.parse_csv")
+    def test_analyze_csv_includes_delimiter(self, mock_parse_csv, mock_config):
+        """Test that analyze_node propagates delimiter to csv_schema."""
+        from ogd_to_lod.parsers.models import CSVData, ColumnInfo, ColumnType
+
+        mock_parse_csv.return_value = CSVData(
+            source="/path/to/file.csv",
+            columns=[
+                ColumnInfo(name="year", detected_type=ColumnType.INTEGER, sample_values=[2020]),
+            ],
+            sample_rows=[{"year": 2020}],
+            total_rows=10,
+            delimiter=";",
+        )
+
+        state = GraphState(csv_path="/path/to/file.csv")
+        state.current_state = FlowState.ANALYZE
+
+        result = analyze_node(state, mock_config)
+
+        assert result.csv_schema["delimiter"] == ";"
+
+    @patch("ogd_to_lod.graph.nodes.parse_csv")
+    def test_analyze_csv_comma_delimiter(self, mock_parse_csv, mock_config):
+        """Test that analyze_node propagates comma delimiter (default)."""
+        from ogd_to_lod.parsers.models import CSVData, ColumnInfo, ColumnType
+
+        mock_parse_csv.return_value = CSVData(
+            source="/path/to/file.csv",
+            columns=[
+                ColumnInfo(name="year", detected_type=ColumnType.INTEGER, sample_values=[2020]),
+            ],
+            sample_rows=[{"year": 2020}],
+            total_rows=10,
+        )
+
+        state = GraphState(csv_path="/path/to/file.csv")
+        state.current_state = FlowState.ANALYZE
+
+        result = analyze_node(state, mock_config)
+
+        assert result.csv_schema["delimiter"] == ","
+
+    @patch("ogd_to_lod.graph.nodes.parse_csv")
     def test_analyze_csv_failure(self, mock_parse_csv, mock_config):
         """Test CSV analysis failure."""
         from ogd_to_lod.parsers import CSVParseError
@@ -296,6 +339,37 @@ class TestHelperFunctions:
         assert "DCAT Metadata" in summary
         assert "Test Dataset" in summary
         assert "Test Org" in summary
+
+    def test_build_ai_context_includes_delimiter(self):
+        """Test that _build_ai_context includes delimiter info."""
+        state = GraphState(
+            base_uri="https://example.org/",
+            csv_schema={
+                "columns": [{"name": "year", "type": "int", "samples": [2020]}],
+                "total_rows": 10,
+                "sample_rows": [],
+                "delimiter": ";",
+            },
+        )
+
+        context = _build_ai_context(state)
+
+        assert "Delimiter: ';'" in context
+
+    def test_build_ai_context_default_delimiter(self):
+        """Test that _build_ai_context defaults to comma when delimiter absent."""
+        state = GraphState(
+            base_uri="https://example.org/",
+            csv_schema={
+                "columns": [{"name": "year", "type": "int", "samples": [2020]}],
+                "total_rows": 10,
+                "sample_rows": [],
+            },
+        )
+
+        context = _build_ai_context(state)
+
+        assert "Delimiter: ','" in context
 
     def test_parse_proposal(self):
         """Test parsing YAML proposal data."""

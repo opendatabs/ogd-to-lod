@@ -346,8 +346,9 @@ class RMLValidator:
     def _get_rml_source_filename(rml_content: str, csv_path: str) -> str:
         """Parse the source filename from RML content.
 
-        Looks for rml:source "filename" pattern. Falls back to the basename
-        of the provided csv_path.
+        Looks for ``rml:source "filename"`` (simple form) or
+        ``csvw:url "filename"`` (CSVW dialect form). Falls back to the
+        basename of the provided *csv_path*.
 
         Args:
             rml_content: RML content in Turtle format.
@@ -356,7 +357,12 @@ class RMLValidator:
         Returns:
             The filename the RML expects.
         """
+        # Simple form: rml:source "filename"
         match = re.search(r'rml:source\s+"([^"]+)"', rml_content)
+        if match:
+            return match.group(1)
+        # CSVW form: csvw:url "filename"
+        match = re.search(r'csvw:url\s+"([^"]+)"', rml_content)
         if match:
             return match.group(1)
         return Path(csv_path).name
