@@ -54,21 +54,28 @@ The CSV source file path is: {csv_path}
 ## CSV Delimiter
 The detected CSV delimiter is: {csv_delimiter}
 
-If the delimiter is a comma (`,`), use the simple form for the logical source:
+CRITICAL: Both `rml:source` and `rml:referenceFormulation` MUST be placed \
+**inside** the `rml:logicalSource` blank node. Never place them at the TriplesMap level.
+
+If the delimiter is a comma (`,`), use the simple form:
 ```
-rml:source "{csv_path}";
-rml:referenceFormulation ql:CSV
+rml:logicalSource [
+    rml:source "{csv_path}";
+    rml:referenceFormulation ql:CSV
+];
 ```
 
-If the delimiter is NOT a comma (e.g. `;` or `\\t`), you MUST use the CSVW dialect \
-form so that RMLMapper knows how to parse the file:
+If the delimiter is NOT a comma (e.g. `;` or `\\t`), you MUST nest a CSVW Table \
+blank node **inside** `rml:source` so that RMLMapper knows how to parse the file:
 ```
-rml:source [
-  a csvw:Table;
-  csvw:url "{csv_path}";
-  csvw:dialect [ a csvw:Dialect; csvw:delimiter "{csv_delimiter}" ]
+rml:logicalSource [
+    rml:source [
+        a csvw:Table;
+        csvw:url "{csv_path}";
+        csvw:dialect [ a csvw:Dialect; csvw:delimiter "{csv_delimiter}" ]
+    ];
+    rml:referenceFormulation ql:CSV
 ];
-rml:referenceFormulation ql:CSV
 ```
 
 Only include the csvw prefix declaration (`@prefix csvw: ...`) when the delimiter \
@@ -82,9 +89,9 @@ is not a comma.
 
 ## RML Structure Requirements
 
-1. **Logical Source**: Define the CSV source with:
-   - rml:source for the CSV file path
-   - rml:referenceFormulation ql:CSV
+1. **Logical Source**: Define the CSV source as shown in the "CSV Delimiter" \
+section above. Both `rml:source` and `rml:referenceFormulation ql:CSV` must be \
+properties of the `rml:logicalSource` blank node.
 
 2. **TriplesMap**: Create a main TriplesMap that:
    - Uses a subject template combining dimension values for unique observation URIs
