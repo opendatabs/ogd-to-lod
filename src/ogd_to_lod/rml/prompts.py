@@ -10,6 +10,8 @@ Always use the following standard prefixes:
 - @prefix rr: <http://www.w3.org/ns/r2rml#> .
 - @prefix rml: <http://semweb.mmlab.be/ns/rml#> .
 - @prefix ql: <http://semweb.mmlab.be/ns/ql#> .
+- @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+- @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 - @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 - @prefix schema: <http://schema.org/> .
 - @prefix cube: <https://cube.link/> .
@@ -21,8 +23,9 @@ For example, if the mapping uses dimensions, measures, and observations:
 - @prefix ex-measure: <{base_uri}measure/> .
 - @prefix ex-obs: <{base_uri}observation/> .
 
-## CRITICAL: Turtle Syntax Rule for Prefixed Names
+## CRITICAL: Turtle Syntax Rules
 
+### No `/` in prefixed name local parts
 The `/` character is NOT allowed in the local part of a prefixed name. \
 This is a hard constraint of the W3C Turtle grammar (PN_LOCAL production).
 
@@ -38,6 +41,11 @@ CORRECT — use sub-prefixes instead:
 
 You MUST define a sub-prefix for every sub-path and use it consistently. \
 Never write a prefixed name that contains `/` in the local part.
+
+### No relative IRIs (e.g. <#Name>)
+Do NOT use relative IRIs such as `<#LogicalSource>` or `<#TriplesMap>`. \
+RMLMapper uses RDF4J which rejects relative IRIs without a @base directive. \
+Instead, use prefixed names like `ex:LogicalSource` or `ex:TriplesMap`.
 
 ## CSV Source Configuration
 The CSV source file path is: {csv_path}
@@ -84,6 +92,18 @@ Do not include explanations outside the code block.
 ```turtle
 # Your RML mapping here
 ```
+"""
+
+RML_CORRECTION_PROMPT = """\
+The RML Turtle you generated has a syntax error. Please fix it.
+
+## Error
+{error_message}
+
+## Instructions
+- Fix ONLY the issue described above.
+- Return the complete corrected RML in a fenced ```turtle``` code block.
+- Do NOT change anything else about the mapping.
 """
 
 RML_VALIDATION_PROMPT = """\

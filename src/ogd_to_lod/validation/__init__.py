@@ -1,9 +1,9 @@
 """RML validation using RMLMapper."""
 
 from ogd_to_lod.validation.validator import (
-    RMLValidator,
-    RMLValidationError,
     RMLMapperNotFoundError,
+    RMLValidationError,
+    RMLValidator,
     ValidationResult,
     validate_rml,
 )

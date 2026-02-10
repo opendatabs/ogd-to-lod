@@ -32,10 +32,12 @@ ogd-to-lod/
 │   ├── parsers/       # CSV and DCAT parsers
 │   ├── ai/            # Azure OpenAI integration
 │   ├── graph/         # LangGraph conversation flow
+│   ├── rml/           # RML generation (prompts, generator)
 │   ├── github/        # GitHub PR creation
-│   └── validation/    # RML validation
+│   └── validation/    # Two-tier RML validation (syntax + RMLMapper)
 ├── tests/             # Test files
 ├── config/            # Configuration files
+├── scripts/           # Utility scripts (RMLMapper setup, worktrees)
 ├── brainstorm.md      # Project requirements
 └── architecture.md    # Technical architecture
 ```

@@ -1,10 +1,12 @@
 """RML generation using AI service."""
 
+import re
+from pathlib import Path
 from typing import Any
 
 from ogd_to_lod.ai import AIService
 from ogd_to_lod.logging import get_logger
-from ogd_to_lod.rml.prompts import RML_GENERATION_PROMPT
+from ogd_to_lod.rml.prompts import RML_CORRECTION_PROMPT, RML_GENERATION_PROMPT
 
 logger = get_logger(__name__)
 
@@ -57,10 +59,11 @@ class RMLGenerator:
         proposal_text = self._format_proposal(mapping_proposal)
         schema_text = self._format_schema(csv_schema)
 
-        # Build the prompt
+        # Build the prompt — use only the CSV basename so that the generated
+        # rml:source value is a plain filename (validation runs in a temp dir).
         prompt = RML_GENERATION_PROMPT.format(
             base_uri=base_uri,
-            csv_path=csv_path,
+            csv_path=Path(csv_path).name,
             mapping_proposal=proposal_text,
             csv_schema=schema_text,
         )
@@ -82,6 +85,7 @@ class RMLGenerator:
                 )
 
             rml_content = turtle_blocks[0]
+            rml_content = self.ensure_common_prefixes(rml_content)
             logger.info(f"Generated RML with {len(rml_content)} characters")
 
             return rml_content
@@ -91,6 +95,99 @@ class RMLGenerator:
         except Exception as e:
             logger.error(f"Failed to generate RML: {e}")
             raise RMLGenerationError(f"Failed to generate RML: {e}") from e
+
+    def regenerate_with_error(self, error_message: str) -> str:
+        """Re-generate RML by sending the validation error back to the AI.
+
+        The AI's conversation history already contains the previous RML output,
+        so we only need to send the correction prompt with the error.
+
+        Args:
+            error_message: The validation error from Tier 1 syntax check.
+
+        Returns:
+            Corrected RML in Turtle format.
+
+        Raises:
+            RMLGenerationError: If regeneration fails or no valid RML is produced.
+        """
+        logger.info("Regenerating RML with error context")
+
+        prompt = RML_CORRECTION_PROMPT.format(error_message=error_message)
+
+        logger.debug("Sending RML correction prompt to AI")
+
+        try:
+            response = self._ai_service.send_message(prompt)
+            parsed = AIService.parse_response(response)
+
+            turtle_blocks = parsed.get_turtle_blocks()
+
+            if not turtle_blocks:
+                logger.warning("No Turtle code block found in AI correction response")
+                raise RMLGenerationError(
+                    "AI did not return corrected RML Turtle output. "
+                    "Response did not contain a turtle code block."
+                )
+
+            rml_content = turtle_blocks[0]
+            rml_content = self.ensure_common_prefixes(rml_content)
+            logger.info(f"Regenerated RML with {len(rml_content)} characters")
+
+            return rml_content
+
+        except RMLGenerationError:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to regenerate RML: {e}")
+            raise RMLGenerationError(f"Failed to regenerate RML: {e}") from e
+
+    @staticmethod
+    def ensure_common_prefixes(turtle_content: str) -> str:
+        """Ensure well-known prefixes are declared if they are used.
+
+        Scans the Turtle content for usage of common prefixed names (e.g.
+        ``rdfs:label``) and prepends any missing ``@prefix`` declarations.
+
+        Args:
+            turtle_content: Raw Turtle content.
+
+        Returns:
+            Turtle content with missing prefix declarations prepended.
+        """
+        # Map of prefix -> IRI for well-known vocabularies
+        well_known = {
+            "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+            "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+            "owl": "http://www.w3.org/2002/07/owl#",
+            "xsd": "http://www.w3.org/2001/XMLSchema#",
+            "skos": "http://www.w3.org/2004/02/skos/core#",
+            "dcterms": "http://purl.org/dc/terms/",
+            "schema": "http://schema.org/",
+            "foaf": "http://xmlns.com/foaf/0.1/",
+        }
+
+        missing: list[str] = []
+        for prefix, iri in well_known.items():
+            # Check if prefix is used (e.g. "rdfs:" appearing as a prefixed name)
+            usage_pattern = re.compile(rf'(?<![:\w]){re.escape(prefix)}:\w')
+            if not usage_pattern.search(turtle_content):
+                continue
+
+            # Check if it is already declared
+            decl_pattern = re.compile(
+                rf'@prefix\s+{re.escape(prefix)}\s*:', re.IGNORECASE
+            )
+            if decl_pattern.search(turtle_content):
+                continue
+
+            missing.append(f"@prefix {prefix}: <{iri}> .")
+
+        if missing:
+            logger.debug(f"Injecting missing prefixes: {missing}")
+            return "\n".join(missing) + "\n" + turtle_content
+
+        return turtle_content
 
     def _format_proposal(self, proposal: dict[str, Any]) -> str:
         """Format mapping proposal for AI prompt.
