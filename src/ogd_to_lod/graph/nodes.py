@@ -878,14 +878,10 @@ def validate_node(
 
         # Add success message
         if result.rdf_output:
-            preview_sample = result.rdf_output[:1000]
-            if len(result.rdf_output) > 1000:
-                preview_sample += "\n... (truncated)"
-
             state.add_message(
                 "assistant",
                 f"RML validation successful! Here's a preview of the generated RDF:\n\n"
-                f"```turtle\n{preview_sample}\n```",
+                f"```turtle\n{result.rdf_output}\n```",
             )
         else:
             # RMLMapper was skipped (not configured)

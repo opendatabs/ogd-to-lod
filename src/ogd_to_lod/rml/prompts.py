@@ -48,7 +48,11 @@ RMLMapper uses RDF4J which rejects relative IRIs without a @base directive. \
 Instead, use prefixed names like `ex:LogicalSource` or `ex:TriplesMap`.
 
 ## CSV Source Configuration
-The CSV source file path is: {csv_path}
+The CSV source should use the placeholder: {csv_path}
+
+IMPORTANT: Always use the placeholder `{csv_path}` for the CSV file path. \
+This placeholder will be replaced with the actual CSV file path at deployment time, \
+making the RML mapping portable and reusable.
 
 ## CSV Delimiter
 The detected CSV delimiter is: {csv_delimiter}
@@ -79,6 +83,9 @@ rml:logicalSource [
 
 Only include the csvw prefix declaration (`@prefix csvw: ...`) when the delimiter \
 is not a comma.
+
+Remember: Always use `{csv_path}` exactly as shown - this is a placeholder that will be \
+replaced with the actual file path during deployment.
 
 ## Approved Mapping Proposal
 {mapping_proposal}
