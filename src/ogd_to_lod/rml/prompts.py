@@ -30,7 +30,6 @@ prefixes:
 
 ## Source Definition
 
-Always include a `delimiter` field, even for comma-separated files. \
 Use the placeholder `{csv_path}` for the file path exactly as shown — \
 it will be replaced with the actual CSV path at deployment time.
 
@@ -39,7 +38,6 @@ sources:
   csvSource:
     access: "{csv_path}"
     referenceFormulation: csv
-    delimiter: "{csv_delimiter}"
 ```
 
 ## Subject Template
@@ -70,25 +68,32 @@ For typed literals, add the XSD datatype as the third list element.
 
 For each key dimension, create a separate mapping entry to generate \
 typed dimension value resources. All mapping entries live under the top-level \
-`mappings:` key:
+`mappings:` key.
 
+EXAMPLE:
 ```yaml
 mappings:
   observations:
     sources:
-      - [csvSource~source]
-    s: ex-obs:$(YearCol)_$(RegionCol)
+      -  [{csv_path}~csv]
+    s: ex-obs:$(YearCol)_$(RegionCodeCol)
     po:
       - [a, cube:Observation]
       - [ex-property:ZEIT, $(YearCol), xsd:gYear]
-      - [ex-property:RAUM, ex-code:$(RegionCol)~iri]
+      - [ex-property:RAUM, ex-code:$(RegionCodeCol)~iri]
   regionCodes:
     sources:
-      - [csvSource~source]
-    s: ex-code:$(RegionCol)
+      - [{csv_path}~csv]
+    s: ex-code:$(RegionCodeCol)
     po:
       - [a, schema:DefinedTerm]
       - [schema:name, $(RegionCol)]
+  regionRelation:
+    sources:
+      - [{csv_path}~csv]
+    s: ex-code:$(RegionCol)
+    po:
+      - [skos:broader, $(RegionColBroader)]
 ```
 
 ## Approved Mapping Proposal

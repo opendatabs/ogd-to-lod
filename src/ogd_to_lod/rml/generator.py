@@ -63,13 +63,11 @@ class RMLGenerator:
 
         # Build the prompt — use a placeholder for the CSV path so that the
         # generated YARRRML is portable and can be deployed with different CSV sources.
-        csv_delimiter = csv_schema.get("delimiter", ",")
         prompt = RML_GENERATION_PROMPT.format(
             base_uri=base_uri,
             csv_path=CSV_SOURCE_PLACEHOLDER,
             mapping_proposal=proposal_text,
             csv_schema=schema_text,
-            csv_delimiter=csv_delimiter,
         )
 
         logger.debug("Sending YARRRML generation prompt to AI")

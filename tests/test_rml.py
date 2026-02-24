@@ -117,29 +117,6 @@ class TestRMLGenerator:
         assert "cube:Observation" in result
         mock_ai_service.send_message.assert_called_once()
 
-    def test_generate_passes_delimiter_to_prompt(self, mock_ai_service, sample_mapping_proposal):
-        """Test that generate() passes csv_delimiter to the prompt."""
-        generator = RMLGenerator(mock_ai_service)
-
-        schema_with_semicolon = {
-            "source": "data.csv",
-            "columns": [{"name": "year", "type": "int", "samples": [2020]}],
-            "total_rows": 10,
-            "delimiter": ";",
-        }
-
-        generator.generate(
-            mapping_proposal=sample_mapping_proposal,
-            csv_schema=schema_with_semicolon,
-            csv_path="/path/to/data.csv",
-            base_uri="https://example.org/",
-        )
-
-        # The prompt sent to AI should contain the semicolon delimiter
-        call_args = mock_ai_service.send_message.call_args[0][0]
-        assert ";" in call_args
-        assert "detected CSV delimiter" in call_args.lower() or "delimiter" in call_args.lower()
-
     def test_generate_no_yaml_block(self, mock_ai_service, sample_mapping_proposal, sample_csv_schema):
         """Test generation fails when no YAML block is returned."""
         mock_ai_service.send_message.return_value = "Here is some text without any code block."
@@ -358,13 +335,11 @@ class TestRMLPrompts:
         assert "{csv_path}" in RML_GENERATION_PROMPT
         assert "{mapping_proposal}" in RML_GENERATION_PROMPT
         assert "{csv_schema}" in RML_GENERATION_PROMPT
-        assert "{csv_delimiter}" in RML_GENERATION_PROMPT
 
     def test_prompt_has_yarrrml_source_section(self):
         """Test that the prompt includes a YARRRML source definition."""
         assert "sources:" in RML_GENERATION_PROMPT
         assert "referenceFormulation: csv" in RML_GENERATION_PROMPT
-        assert "delimiter:" in RML_GENERATION_PROMPT
 
     def test_prompt_mentions_cube_link(self):
         """Test that the prompt mentions cube.link vocabulary."""
