@@ -4,13 +4,19 @@ import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_openai import AzureChatOpenAI
 from openai import APIConnectionError, APIStatusError, RateLimitError
 
 from ogd_to_lod.config import AzureOpenAIConfig
+from ogd_to_lod.logging import get_logger
+
+logger = get_logger(__name__)
+
+# Type for token usage callback
+TokenCallback = Callable[[int, "TokenUsage", "TokenUsage", float], None]
 
 # Default system prompt for RML mapping assistance
 DEFAULT_SYSTEM_PROMPT = """\
@@ -33,6 +39,49 @@ Response format:
 - Use markdown for explanations
 - Put structured data (mapping proposals) in fenced YAML code blocks
 - Put RML output in fenced Turtle code blocks"""
+
+
+@dataclass
+class TokenUsage:
+    """Token usage statistics for AI requests."""
+
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cached_tokens: int = 0
+    total_tokens: int = 0
+
+    def add(self, other: "TokenUsage") -> None:
+        """Add another TokenUsage to this one.
+
+        Args:
+            other: TokenUsage to add.
+        """
+        self.input_tokens += other.input_tokens
+        self.output_tokens += other.output_tokens
+        self.cached_tokens += other.cached_tokens
+        self.total_tokens += other.total_tokens
+
+    def calculate_cost(
+        self,
+        price_per_1m_input: float,
+        price_per_1m_output: float,
+        price_per_1m_cached: float,
+    ) -> float:
+        """Calculate cost in CHF based on token usage and pricing.
+
+        Args:
+            price_per_1m_input: Price per 1M input tokens.
+            price_per_1m_output: Price per 1M output tokens.
+            price_per_1m_cached: Price per 1M cached tokens.
+
+        Returns:
+            Total cost in CHF.
+        """
+        cost = 0.0
+        cost += (self.input_tokens / 1_000_000) * price_per_1m_input
+        cost += (self.output_tokens / 1_000_000) * price_per_1m_output
+        cost += (self.cached_tokens / 1_000_000) * price_per_1m_cached
+        return cost
 
 
 @dataclass
@@ -138,13 +187,18 @@ class AIService:
         self._conversation_history: list[Message] = []
         self._request_count = 0  # Track number of requests made
         self._request_limit = config.max_requests  # Maximum requests before asking user
+        self._token_usage = TokenUsage()  # Cumulative token usage
+        self._last_request_tokens = TokenUsage()  # Tokens from last request
+        self._token_callbacks: list[TokenCallback] = []  # Callbacks for token updates
 
         # Initialize the LangChain Azure OpenAI client
+        # Disable SDK retries - we handle retries ourselves for better user feedback
         self._client = AzureChatOpenAI(
             azure_endpoint=config.endpoint,
             azure_deployment=config.deployment,
             api_key=config.api_key,
             api_version=config.api_version,
+            max_retries=0,  # Disable automatic retries - we handle them ourselves
         )
 
         # Load system prompt
@@ -211,6 +265,47 @@ class AIService:
         """Reset the request counter to zero."""
         self._request_count = 0
 
+    @property
+    def token_usage(self) -> TokenUsage:
+        """Get cumulative token usage."""
+        return self._token_usage
+
+    @property
+    def last_request_tokens(self) -> TokenUsage:
+        """Get token usage from the last request."""
+        return self._last_request_tokens
+
+    def get_total_cost(self) -> float:
+        """Calculate total cost in CHF based on token usage.
+
+        Returns:
+            Total cost in CHF.
+        """
+        return self._token_usage.calculate_cost(
+            self._config.price_per_1m_input_tokens,
+            self._config.price_per_1m_output_tokens,
+            self._config.price_per_1m_cached_tokens,
+        )
+
+    def register_token_callback(self, callback: TokenCallback) -> None:
+        """Register a callback to be called after each request.
+
+        The callback receives: (request_count, last_tokens, total_tokens, total_cost)
+
+        Args:
+            callback: Function to call after each token update.
+        """
+        self._token_callbacks.append(callback)
+
+    def unregister_token_callback(self, callback: TokenCallback) -> None:
+        """Unregister a token callback.
+
+        Args:
+            callback: Function to remove from callbacks.
+        """
+        if callback in self._token_callbacks:
+            self._token_callbacks.remove(callback)
+
     def add_context(self, context: str) -> None:
         """Add context to the conversation as a system message.
 
@@ -246,6 +341,41 @@ class AIService:
 
         return messages
 
+    @staticmethod
+    def _extract_token_usage(response: Any) -> TokenUsage:
+        """Extract token usage from API response.
+
+        Args:
+            response: LangChain AIMessage response.
+
+        Returns:
+            TokenUsage with extracted token counts.
+        """
+        usage = TokenUsage()
+
+        # Try to extract from response_metadata (LangChain format)
+        if hasattr(response, "response_metadata"):
+            metadata = response.response_metadata
+            if "token_usage" in metadata:
+                token_data = metadata["token_usage"]
+                usage.input_tokens = token_data.get("prompt_tokens", 0)
+                usage.output_tokens = token_data.get("completion_tokens", 0)
+                usage.total_tokens = token_data.get("total_tokens", 0)
+
+                # Azure OpenAI may provide cached tokens separately
+                if "prompt_tokens_details" in token_data:
+                    details = token_data["prompt_tokens_details"]
+                    usage.cached_tokens = details.get("cached_tokens", 0)
+
+        # Try to extract from usage_metadata (newer LangChain format)
+        elif hasattr(response, "usage_metadata"):
+            metadata = response.usage_metadata
+            usage.input_tokens = metadata.get("input_tokens", 0)
+            usage.output_tokens = metadata.get("output_tokens", 0)
+            usage.total_tokens = metadata.get("total_tokens", 0)
+
+        return usage
+
     def send_message(self, message: str) -> str:
         """Send a message to the AI and get a response.
 
@@ -267,6 +397,12 @@ class AIService:
         if self._request_count >= self._request_limit:
             raise RequestLimitReached(self._request_count, self._request_limit)
 
+        # Log that we're making a request
+        logger.debug(
+            f"Sending AI request #{self._request_count + 1} "
+            f"(message length: {len(message)} chars)"
+        )
+
         messages = self._build_messages(message)
 
         # Add user message to history
@@ -282,6 +418,31 @@ class AIService:
                 # Increment request counter on successful request
                 self._request_count += 1
 
+                # Extract and track token usage
+                usage = self._extract_token_usage(response)
+                self._last_request_tokens = usage
+                self._token_usage.add(usage)
+
+                # Log token usage
+                logger.debug(
+                    f"Request #{self._request_count}: "
+                    f"{usage.input_tokens} input, {usage.output_tokens} output, "
+                    f"{usage.cached_tokens} cached tokens"
+                )
+
+                # Notify callbacks about token update
+                total_cost = self.get_total_cost()
+                for callback in self._token_callbacks:
+                    try:
+                        callback(
+                            self._request_count,
+                            self._last_request_tokens,
+                            self._token_usage,
+                            total_cost,
+                        )
+                    except Exception as e:
+                        logger.warning(f"Token callback failed: {e}")
+
                 # Add assistant response to history
                 self._conversation_history.append(
                     Message(role="assistant", content=response_content)
@@ -293,12 +454,32 @@ class AIService:
                 last_error = e
                 if attempt < self._max_retries - 1:
                     delay = self._retry_delay * (2**attempt)
+                    logger.warning(
+                        f"Rate limit hit (429). Retrying in {delay}s... "
+                        f"(attempt {attempt + 1}/{self._max_retries})"
+                    )
+                    # Notify user via print (visible in console)
+                    print(
+                        f"  ⚠ Rate limit reached. Waiting {delay:.1f}s before retry "
+                        f"({attempt + 1}/{self._max_retries})...",
+                        flush=True,
+                    )
                     time.sleep(delay)
+                else:
+                    logger.error(
+                        f"Rate limit exceeded after {self._max_retries} attempts"
+                    )
                 continue
 
             except APIConnectionError as e:
                 # Remove user message from history on connection failure
                 self._conversation_history.pop()
+                logger.error(f"Connection to Azure OpenAI failed: {e}")
+                print(
+                    f"\n⚠ Connection failed: {e}\n"
+                    f"Please check your network and Azure OpenAI endpoint configuration.",
+                    flush=True,
+                )
                 raise ConnectionFailed(
                     f"Failed to connect to Azure OpenAI: {e}"
                 ) from e
@@ -306,6 +487,33 @@ class AIService:
             except APIStatusError as e:
                 # Remove user message from history on error
                 self._conversation_history.pop()
+                logger.error(f"Azure OpenAI API error {e.status_code}: {e.message}")
+
+                # Provide user-friendly error messages
+                if e.status_code == 401:
+                    print(
+                        f"\n⚠ Authentication failed (401)\n"
+                        f"Please check your AZURE_OPENAI_KEY environment variable.",
+                        flush=True,
+                    )
+                elif e.status_code == 404:
+                    print(
+                        f"\n⚠ Deployment not found (404)\n"
+                        f"Please check your deployment name in config.yaml.",
+                        flush=True,
+                    )
+                elif e.status_code == 429:
+                    print(
+                        f"\n⚠ Rate limit exceeded (429)\n"
+                        f"Your Azure OpenAI quota has been exceeded.",
+                        flush=True,
+                    )
+                else:
+                    print(
+                        f"\n⚠ API error ({e.status_code}): {e.message}",
+                        flush=True,
+                    )
+
                 raise AIServiceError(
                     f"Azure OpenAI API error ({e.status_code}): {e.message}"
                 ) from e

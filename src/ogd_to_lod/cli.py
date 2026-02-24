@@ -3,12 +3,65 @@
 import argparse
 import sys
 
-from ogd_to_lod.ai import RequestLimitReached
+from ogd_to_lod.ai import RequestLimitReached, TokenUsage
 from ogd_to_lod.config import load_config
 from ogd_to_lod.graph import FlowState, MappingFlow
 from ogd_to_lod.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+def format_token_stats(flow: MappingFlow) -> str:
+    """Format token usage statistics as a string.
+
+    Args:
+        flow: MappingFlow instance with AI service.
+
+    Returns:
+        Formatted token statistics string.
+    """
+    ai = flow.ai_service
+    usage = ai.token_usage
+    cost = ai.get_total_cost()
+
+    lines = []
+    lines.append(f"Requests: {ai.request_count}/{ai.request_limit}")
+    lines.append(
+        f"Tokens: {usage.total_tokens:,} "
+        f"({usage.input_tokens:,} in, {usage.output_tokens:,} out"
+    )
+    if usage.cached_tokens > 0:
+        lines[-1] += f", {usage.cached_tokens:,} cached"
+    lines[-1] += ")"
+    lines.append(f"Cost: CHF {cost:.4f}")
+
+    return " | ".join(lines)
+
+
+def create_token_callback(request_limit: int) -> callable:
+    """Create a callback that prints token stats in real-time.
+
+    Args:
+        request_limit: Maximum request limit for display.
+
+    Returns:
+        Callback function.
+    """
+    def callback(
+        request_count: int,
+        last_tokens: TokenUsage,
+        total_tokens: TokenUsage,
+        total_cost: float,
+    ) -> None:
+        """Print token usage update."""
+        # Format: [Req 5/50 | +1,234 tok | Total: 12,345 | CHF 0.0580]
+        msg = f"  → Req {request_count}/{request_limit}"
+        msg += f" | +{last_tokens.total_tokens:,} tok"
+        msg += f" | Total: {total_tokens.total_tokens:,}"
+        msg += f" | CHF {total_cost:.4f}"
+        print(msg, flush=True)
+
+    return callback
 
 
 def main() -> int:
@@ -71,6 +124,11 @@ def main() -> int:
     # Start the mapping flow
     try:
         flow = MappingFlow(config)
+
+        # Register callback for real-time token updates
+        token_callback = create_token_callback(config.azure.max_requests)
+        flow.ai_service.register_token_callback(token_callback)
+
         state = flow.start(
             csv_path=args.csv_path,
             dcat_path=args.dcat_path,
@@ -148,6 +206,9 @@ def main() -> int:
             print(f"\nError: {e}", file=sys.stderr)
             continue
 
+        # Show token usage stats
+        print(f"\n[{format_token_stats(flow)}]")
+
         # Check for errors
         if state.current_state == FlowState.ERROR:
             print(f"\nError: {state.error_message}", file=sys.stderr)
@@ -220,6 +281,28 @@ def main() -> int:
                 print("RML mapping generated but PR creation was skipped.")
                 print("You can find the generated RML above.")
             break
+
+    # Show final token usage summary
+    print("\n" + "=" * 60)
+    print("Session Summary")
+    print("=" * 60)
+    ai = flow.ai_service
+    usage = ai.token_usage
+    cost = ai.get_total_cost()
+
+    print(f"Total Requests: {ai.request_count}")
+    print(f"Total Tokens: {usage.total_tokens:,}")
+    print(f"  - Input: {usage.input_tokens:,}")
+    print(f"  - Output: {usage.output_tokens:,}")
+    if usage.cached_tokens > 0:
+        print(f"  - Cached: {usage.cached_tokens:,}")
+    print(f"\nEstimated Cost: CHF {cost:.4f}")
+    print(f"  (Input: CHF {(usage.input_tokens / 1_000_000) * flow._config.azure.price_per_1m_input_tokens:.4f}, "
+          f"Output: CHF {(usage.output_tokens / 1_000_000) * flow._config.azure.price_per_1m_output_tokens:.4f}")
+    if usage.cached_tokens > 0:
+        print(f"   Cached: CHF {(usage.cached_tokens / 1_000_000) * flow._config.azure.price_per_1m_cached_tokens:.4f})")
+    else:
+        print(")")
 
     return 0
 

@@ -9,9 +9,14 @@ azure:
   endpoint: "${AZURE_OPENAI_ENDPOINT}"
   api_key: "${AZURE_OPENAI_KEY}"
   deployment: "${AZURE_OPENAI_DEPLOYMENT}"
-  api_version: "2024-02-15-preview"
+  api_version: "${AZURE_OPENAI_VERSION}"
   # Maximum AI requests before asking user to continue (prevents runaway costs)
   max_requests: 50
+  # Pricing in CHF per 1M tokens (adjust based on your Azure OpenAI pricing)
+  pricing:
+    price_per_1m_input_tokens: 1.02    # CHF per 1M input tokens
+    price_per_1m_output_tokens: 8.08   # CHF per 1M output tokens
+    price_per_1m_cached_tokens: 0.10   # CHF per 1M cached tokens
 
 sparql:
   # Optional: SPARQL endpoint for querying existing dimensions (V1)
