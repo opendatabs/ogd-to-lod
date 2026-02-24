@@ -89,7 +89,7 @@ def analyze_node(state: GraphState, config: Config) -> GraphState:
 
     # Parse CSV
     try:
-        csv_data = parse_csv(state.csv_path, sample_rows=10)
+        csv_data = parse_csv(state.csv_path, sample_rows=20, max_rows=20)
         state.csv_schema = {
             "source": csv_data.source,
             "columns": [
@@ -101,7 +101,7 @@ def analyze_node(state: GraphState, config: Config) -> GraphState:
                 for col in csv_data.columns
             ],
             "total_rows": csv_data.total_rows,
-            "sample_rows": csv_data.sample_rows[:10],
+            "sample_rows": csv_data.sample_rows[:20],
             "delimiter": csv_data.delimiter,
         }
         logger.debug(f"Parsed CSV with {len(csv_data.columns)} columns")

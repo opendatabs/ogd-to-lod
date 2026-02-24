@@ -236,6 +236,7 @@ def parse_csv(
     encoding: str | None = None,
     delimiter: str | None = None,
     sample_rows: int = 5,
+    max_rows: int | None = None,
 ) -> CSVData:
     """Parse a CSV file and extract schema information.
 
@@ -244,6 +245,9 @@ def parse_csv(
         encoding: Optional encoding to use. If None, will try to detect.
         delimiter: Optional delimiter to use. If None, will try to detect.
         sample_rows: Number of sample rows to extract (default: 5).
+        max_rows: Maximum number of rows to read from the file. If None,
+            all rows are read. When set, total_rows is estimated from the
+            raw line count rather than a full read.
 
     Returns:
         CSVData object containing parsed information.
@@ -270,7 +274,7 @@ def parse_csv(
         if not fieldnames:
             raise CSVParseError(f"CSV file '{source}' has no columns")
 
-        # Read all rows to get total count and detect types
+        # Read rows up to max_rows; estimate total from raw line count
         all_rows: list[dict[str, str]] = []
         column_values: dict[str, list[str]] = {name: [] for name in fieldnames}
 
@@ -278,8 +282,15 @@ def parse_csv(
             all_rows.append(row)
             for name in fieldnames:
                 column_values[name].append(row.get(name, ""))
+            if max_rows is not None and len(all_rows) >= max_rows:
+                break
 
-        total_rows = len(all_rows)
+        # Total row count: exact when all rows read, estimated otherwise
+        if max_rows is None or len(all_rows) < max_rows:
+            total_rows = len(all_rows)
+        else:
+            # Count non-empty lines minus header as a fast estimate
+            total_rows = sum(1 for line in content.splitlines() if line.strip()) - 1
 
         if total_rows == 0:
             raise CSVParseError(f"CSV file '{source}' has no data rows")
