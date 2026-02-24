@@ -194,8 +194,6 @@ Important: Use exactly the keys shown above (dimensions, measures, column, type,
     response = ai_service.send_message(prompt)
     parsed = AIService.parse_response(response)
 
-    # Store response
-    state.proposal_text = parsed.text
     state.add_message("assistant", response)
 
     # Parse YAML proposal with robust parsing
@@ -226,20 +224,22 @@ Important: Use exactly the keys shown above (dimensions, measures, column, type,
             "Could not parse mapping proposal from AI response. "
             "User may need to provide explicit structure."
         )
-        # Still present what the AI said, even if we couldn't parse it
-        state.add_message(
-            "assistant",
-            f"I couldn't generate a structured proposal. Here's my analysis:\n\n{state.proposal_text}\n\n"
+        fallback_text = (
+            f"I couldn't generate a structured proposal. Here's my analysis:\n\n{parsed.text}\n\n"
             "Could you help me understand which columns should be dimensions and which should be measures?"
         )
+        state.proposal_text = fallback_text
+        state.add_message("assistant", fallback_text)
     else:
         # Present the proposal in human-readable format
         proposal_summary = _format_proposal_summary(state.mapping_proposal)
-        state.add_message(
-            "assistant",
-            f"{proposal_summary}\n\nDoes this mapping structure look correct? "
+        display_text = (
+            f"{parsed.text}\n\n{proposal_summary}\n\n"
+            "Does this mapping structure look correct? "
             "(You can approve, suggest changes, or ask questions)"
-        )
+        ).lstrip()
+        state.proposal_text = display_text
+        state.add_message("assistant", display_text)
 
     # Wait for user confirmation
     state.awaiting_user_input = True
@@ -697,7 +697,7 @@ def _build_summary(csv_schema: dict[str, Any] | None, dcat_metadata: dict[str, A
         lines.append("")
         lines.append("### Columns")
         for col in csv_schema.get("columns", []):
-            samples = ", ".join(str(s) for s in col.get("samples", [])[:3])
+            samples = ", ".join(str(s)[:200] for s in col.get("samples", [])[:3])
             lines.append(f"- **{col['name']}** ({col['type']}): {samples}")
 
     if dcat_metadata:
@@ -734,7 +734,7 @@ def _build_ai_context(state: GraphState) -> str:
         lines.append("Columns:")
         for col in state.csv_schema.get("columns", []):
             samples = col.get("samples", [])
-            samples_str = ", ".join(f'"{s}"' for s in samples[:3])
+            samples_str = ", ".join(f'"{str(s)[:200]}"' for s in samples[:3])
             lines.append(f"- {col['name']} ({col['type']}): [{samples_str}]")
 
         lines.append("")
