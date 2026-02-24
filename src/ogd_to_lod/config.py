@@ -155,8 +155,10 @@ def load_config(config_path: str | Path) -> Config:
     # Validate and construct config objects
     try:
         github_data = config_data.get("github", {})
+        # Support environment variable override for GitHub repo
+        github_repo = os.environ.get("GITHUB_REPO", "") or github_data.get("repo", "")
         github = GitHubConfig(
-            repo=github_data.get("repo", ""),
+            repo=github_repo,
             token=github_data.get("token", ""),
         )
         if not github.repo:

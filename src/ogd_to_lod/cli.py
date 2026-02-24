@@ -102,8 +102,17 @@ def main() -> int:
         print("\n" + "-" * 60)
 
         # Show appropriate prompt based on state
-        if flow.is_awaiting_pr_confirmation():
-            prompt = "Create a PR with this mapping? (yes/no): "
+        if flow.is_awaiting_name_confirmation():
+            name = flow.state.mapping_name or "mapping"
+            prompt = f"Dataset name ['{name}']: "
+        elif flow.is_awaiting_csv_url():
+            prompt = "Public CSV source URL (Enter to skip): "
+        elif flow.is_awaiting_dcat_url():
+            prompt = "Public DCAT metadata URL (Enter to skip): "
+        elif flow.is_awaiting_dcat_inclusion():
+            prompt = "Include DCAT metadata file in PR? (yes/no): "
+        elif flow.is_awaiting_pr_confirmation():
+            prompt = "Push to GitHub and create PR? (yes/no): "
         else:
             prompt = "Your response (or 'quit' to exit): "
 
@@ -117,7 +126,13 @@ def main() -> int:
             print("Exiting...")
             return 0
 
-        if not user_input:
+        # Allow empty input for name confirmation and URL states (Enter = skip)
+        allows_empty = (
+            flow.is_awaiting_name_confirmation()
+            or flow.is_awaiting_csv_url()
+            or flow.is_awaiting_dcat_url()
+        )
+        if not user_input and not allows_empty:
             continue
 
         try:
@@ -153,6 +168,15 @@ def main() -> int:
             print(f"\nError: {state.error_message}", file=sys.stderr)
             return 1
 
+        # Show PR preview when transitioning to PREVIEW state
+        if flow.is_awaiting_pr_confirmation() and flow.get_pr_description():
+            print("\n" + "=" * 60)
+            print("PR Preview:")
+            print("-" * 60)
+            print(flow.get_pr_description())
+            print("=" * 60)
+            continue
+
         # Show updated proposal if in refinement
         if flow.get_proposal_text() and state.current_state == FlowState.PROPOSE:
             print("\n" + "=" * 60)
@@ -169,8 +193,9 @@ def main() -> int:
             # Save RML to file if output path provided
             if args.output:
                 try:
+                    rml_output = flow.get_generated_rml()
                     with open(args.output, 'w', encoding='utf-8') as f:
-                        f.write(flow.get_generated_rml())
+                        f.write(rml_output)
                     print(f"\n✓ RML saved to: {args.output}")
                 except Exception as e:
                     print(f"\n⚠ Warning: Failed to save RML to {args.output}: {e}", file=sys.stderr)
