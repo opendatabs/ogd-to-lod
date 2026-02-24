@@ -16,7 +16,12 @@ from ogd_to_lod.graph.nodes import (
     init_node,
     analyze_node,
     propose_node,
+    confirm_name_node,
+    preview_node,
+    create_pr_node,
     handle_user_input,
+    suggest_mapping_name,
+    _build_pr_description,
     _build_summary,
     _build_ai_context,
     _parse_proposal,
@@ -474,6 +479,14 @@ class TestMappingFlow:
         flow._state.current_state = FlowState.ERROR
         assert flow.is_complete() is True
 
+        # PREVIEW is NOT complete — still awaiting PR confirmation
+        flow._state.current_state = FlowState.PREVIEW
+        assert flow.is_complete() is False
+
+        # CONFIRM_NAME is NOT complete — still awaiting name confirmation
+        flow._state.current_state = FlowState.CONFIRM_NAME
+        assert flow.is_complete() is False
+
     def test_is_approved(self, mock_config, mock_ai_service):
         """Test is_approved method."""
         flow = MappingFlow(mock_config, mock_ai_service)
@@ -696,3 +709,494 @@ year - temporal dimension"""
         proposal = _robust_parse_yaml_proposal(yaml_content)
         # Should return None or empty proposal
         assert proposal is None or (not proposal.dimensions and not proposal.measures)
+
+
+class TestSuggestMappingName:
+    """Tests for suggest_mapping_name helper."""
+
+    def test_from_dcat_title(self):
+        state = GraphState(
+            csv_path="/data/file.csv",
+            dcat_metadata={"title": "Population Statistics 2024"},
+        )
+        assert suggest_mapping_name(state) == "population-statistics-2024"
+
+    def test_from_csv_filename(self):
+        state = GraphState(csv_path="/data/my_dataset.csv")
+        assert suggest_mapping_name(state) == "my-dataset"
+
+    def test_fallback_when_no_inputs(self):
+        state = GraphState()
+        assert suggest_mapping_name(state) == "mapping"
+
+    def test_dcat_title_preferred_over_csv(self):
+        state = GraphState(
+            csv_path="/data/raw.csv",
+            dcat_metadata={"title": "Air Quality Measurements"},
+        )
+        name = suggest_mapping_name(state)
+        assert "air-quality" in name
+        assert "raw" not in name
+
+    def test_special_chars_normalised(self):
+        state = GraphState(
+            dcat_metadata={"title": "Data (2024) — v2.0"},
+        )
+        name = suggest_mapping_name(state)
+        # Should only contain lowercase, digits, hyphens
+        assert all(c.isalnum() or c == "-" for c in name)
+        assert name  # non-empty
+
+
+class TestConfirmNameNode:
+    """Tests for confirm_name_node setting mapping_name."""
+
+    def test_suggests_name_from_csv(self):
+        state = GraphState(
+            csv_path="/data/population.csv",
+            generated_rml="@prefix rr: <http://example.org/> .",
+        )
+        result = confirm_name_node(state)
+        assert result.mapping_name == "population"
+        assert result.current_state == FlowState.CONFIRM_NAME
+        assert result.awaiting_user_input is True
+
+    def test_suggests_name_from_dcat(self):
+        state = GraphState(
+            csv_path="/data/file.csv",
+            generated_rml="@prefix rr: <http://example.org/> .",
+            dcat_metadata={"title": "Population Statistics 2024"},
+        )
+        result = confirm_name_node(state)
+        assert result.mapping_name == "population-statistics-2024"
+
+    def test_preserves_existing_mapping_name(self):
+        state = GraphState(
+            csv_path="/data/population.csv",
+            generated_rml="@prefix rr: <http://example.org/> .",
+            mapping_name="custom-name",
+        )
+        result = confirm_name_node(state)
+        assert result.mapping_name == "custom-name"
+
+    def test_error_when_no_rml(self):
+        state = GraphState(csv_path="/data/file.csv")
+        result = confirm_name_node(state)
+        assert result.current_state == FlowState.ERROR
+
+
+class TestCreatePrNodeEnhancements:
+    """Tests for create_pr_node using mapping_name and placeholder."""
+
+    @patch("ogd_to_lod.graph.nodes.GitHubService")
+    def test_uses_state_mapping_name(self, mock_gh_cls, mock_config):
+        mock_service = MagicMock()
+        mock_service.create_mapping_pr.return_value = MagicMock(
+            pr_url="https://github.com/test/repo/pull/1",
+            pr_number=1,
+        )
+        mock_gh_cls.return_value = mock_service
+
+        state = GraphState(
+            csv_path="/data/file.csv",
+            generated_rml='@prefix rml: <http://semweb.mmlab.be/ns/rml#> .\nex:M rml:logicalSource [ rml:source "file.csv" ].',
+            mapping_name="my-mapping",
+        )
+        create_pr_node(state, mock_config)
+        call_args = mock_service.create_mapping_pr.call_args
+        assert call_args.kwargs["mapping_name"] == "my-mapping"
+
+    @patch("ogd_to_lod.graph.nodes.GitHubService")
+    def test_falls_back_to_csv_filename(self, mock_gh_cls, mock_config):
+        mock_service = MagicMock()
+        mock_service.create_mapping_pr.return_value = MagicMock(
+            pr_url="https://github.com/test/repo/pull/1",
+            pr_number=1,
+        )
+        mock_gh_cls.return_value = mock_service
+
+        state = GraphState(
+            csv_path="/data/fallback.csv",
+            generated_rml='@prefix rml: <http://semweb.mmlab.be/ns/rml#> .\nex:M rml:logicalSource [ rml:source "fallback.csv" ].',
+        )
+        create_pr_node(state, mock_config)
+        call_args = mock_service.create_mapping_pr.call_args
+        assert call_args.kwargs["mapping_name"] == "fallback"
+
+    @patch("ogd_to_lod.graph.nodes.GitHubService")
+    def test_passes_rml_with_csv_source_placeholder(self, mock_gh_cls, mock_config):
+        mock_service = MagicMock()
+        mock_service.create_mapping_pr.return_value = MagicMock(
+            pr_url="https://github.com/test/repo/pull/1",
+            pr_number=1,
+        )
+        mock_gh_cls.return_value = mock_service
+
+        state = GraphState(
+            csv_path="/data/test.csv",
+            generated_rml='@prefix rml: <http://semweb.mmlab.be/ns/rml#> .\nex:M rml:logicalSource [ rml:source "{{CSV_SOURCE}}" ].',
+            mapping_name="test",
+        )
+        create_pr_node(state, mock_config)
+        call_args = mock_service.create_mapping_pr.call_args
+        rml_committed = call_args.kwargs["rml_content"]
+        assert "{{CSV_SOURCE}}" in rml_committed
+
+
+class TestBuildPrDescriptionIncludesRdfPreview:
+    """Tests for _build_pr_description including rdf_preview."""
+
+    def test_includes_rdf_preview(self):
+        state = GraphState(
+            csv_path="/data/file.csv",
+            rdf_preview="ex:a ex:b ex:c .",
+        )
+        result = _build_pr_description(state, "test-mapping")
+        assert "ex:a ex:b ex:c" in result
+
+    def test_no_rdf_content_when_empty(self):
+        state = GraphState(csv_path="/data/file.csv")
+        result = _build_pr_description(state, "test-mapping")
+        assert "```turtle" not in result
+
+
+class TestPreviewNode:
+    """Tests for preview_node building PR description."""
+
+    def test_builds_pr_description(self):
+        state = GraphState(
+            csv_path="/data/population.csv",
+            generated_rml="@prefix rr: <http://example.org/> .",
+            mapping_name="population",
+        )
+        result = preview_node(state)
+        assert result.pr_description is not None
+        assert result.current_state == FlowState.PREVIEW
+        assert result.awaiting_user_input is True
+
+    def test_error_when_no_rml(self):
+        state = GraphState(csv_path="/data/file.csv", mapping_name="test")
+        result = preview_node(state)
+        assert result.current_state == FlowState.ERROR
+
+    def test_uses_mapping_name_in_description(self):
+        state = GraphState(
+            csv_path="/data/pop.csv",
+            generated_rml="@prefix rr: <http://example.org/> .",
+            mapping_name="my-mapping",
+        )
+        result = preview_node(state)
+        assert "my-mapping" in result.pr_description
+
+
+class TestNameConfirmationFlow:
+    """Tests for the name confirmation step in the flow."""
+
+    def test_empty_input_keeps_suggested_name(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.CONFIRM_NAME
+        flow._state.generated_rml = "some rml"
+        flow._state.csv_path = "/data/file.csv"
+        flow._state.mapping_name = "auto-suggested"
+        flow._state.awaiting_user_input = True
+
+        result = flow._handle_name_confirmation("")
+
+        assert result.mapping_name == "auto-suggested"
+        # Now transitions to ASK_CSV_URL instead of PREVIEW
+        assert result.current_state == FlowState.ASK_CSV_URL
+        assert result.awaiting_user_input is True
+
+    def test_custom_input_overrides_name(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.CONFIRM_NAME
+        flow._state.generated_rml = "some rml"
+        flow._state.csv_path = "/data/file.csv"
+        flow._state.mapping_name = "auto-suggested"
+        flow._state.awaiting_user_input = True
+
+        result = flow._handle_name_confirmation("my-custom-name")
+
+        assert result.mapping_name == "my-custom-name"
+        assert result.current_state == FlowState.ASK_CSV_URL
+
+
+class TestPrConfirmationSimplified:
+    """Tests for simplified PR confirmation (yes/no only, no custom-name branch)."""
+
+    def test_yes_creates_pr(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.PREVIEW
+        flow._state.generated_rml = "some rml"
+        flow._state.csv_path = "/data/file.csv"
+        flow._state.mapping_name = "test"
+        flow._state.awaiting_user_input = True
+
+        result = flow._handle_pr_confirmation("yes")
+        assert result.user_intent == UserIntent.APPROVE
+
+    def test_no_cancels(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.PREVIEW
+        flow._state.awaiting_user_input = True
+
+        result = flow._handle_pr_confirmation("no")
+        assert result.current_state == FlowState.END
+        assert result.user_intent == UserIntent.REJECT
+
+    def test_unrecognised_input_prompts_again(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.PREVIEW
+        flow._state.awaiting_user_input = True
+
+        result = flow._handle_pr_confirmation("some-random-text")
+        assert result.awaiting_user_input is True
+        # Should NOT treat as custom name — stays in PREVIEW
+        assert result.current_state == FlowState.PREVIEW
+
+
+class TestNameConfirmationTransitionsToAskCsvUrl:
+    """Test that name confirmation now leads to ASK_CSV_URL."""
+
+    def test_name_confirmation_transitions_to_ask_csv_url(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.CONFIRM_NAME
+        flow._state.generated_rml = "some rml"
+        flow._state.csv_path = "/data/file.csv"
+        flow._state.mapping_name = "auto-suggested"
+        flow._state.awaiting_user_input = True
+
+        result = flow._handle_name_confirmation("")
+
+        assert result.current_state == FlowState.ASK_CSV_URL
+        assert result.awaiting_user_input is True
+        assert result.mapping_name == "auto-suggested"
+
+    def test_custom_name_also_goes_to_ask_csv_url(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.CONFIRM_NAME
+        flow._state.generated_rml = "some rml"
+        flow._state.csv_path = "/data/file.csv"
+        flow._state.mapping_name = "auto-suggested"
+        flow._state.awaiting_user_input = True
+
+        result = flow._handle_name_confirmation("my-custom")
+
+        assert result.current_state == FlowState.ASK_CSV_URL
+        assert result.mapping_name == "my-custom"
+
+
+class TestCsvUrlFlow:
+    """Tests for the ASK_CSV_URL state handler."""
+
+    def test_empty_input_skips_url(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.ASK_CSV_URL
+        flow._state.csv_path = "/data/file.csv"
+        flow._state.generated_rml = "some rml"
+        flow._state.awaiting_user_input = True
+        # No DCAT path → should go to PREVIEW
+        flow._state.dcat_path = None
+
+        result = flow._handle_csv_url("")
+
+        assert result.csv_source_url is None
+        assert result.current_state == FlowState.PREVIEW
+
+    def test_url_stored_and_no_dcat_goes_to_preview(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.ASK_CSV_URL
+        flow._state.csv_path = "/data/file.csv"
+        flow._state.generated_rml = "some rml"
+        flow._state.awaiting_user_input = True
+        flow._state.dcat_path = None
+
+        result = flow._handle_csv_url("https://example.com/data.csv")
+
+        assert result.csv_source_url == "https://example.com/data.csv"
+        assert result.current_state == FlowState.PREVIEW
+
+    def test_with_dcat_goes_to_ask_dcat_url(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.ASK_CSV_URL
+        flow._state.csv_path = "/data/file.csv"
+        flow._state.generated_rml = "some rml"
+        flow._state.dcat_path = "/data/dcat.ttl"
+        flow._state.awaiting_user_input = True
+
+        result = flow._handle_csv_url("https://example.com/data.csv")
+
+        assert result.csv_source_url == "https://example.com/data.csv"
+        assert result.current_state == FlowState.ASK_DCAT_URL
+        assert result.awaiting_user_input is True
+
+
+class TestDcatUrlFlow:
+    """Tests for the ASK_DCAT_URL state handler."""
+
+    def test_url_stored_goes_to_ask_inclusion(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.ASK_DCAT_URL
+        flow._state.generated_rml = "some rml"
+        flow._state.csv_path = "/data/file.csv"
+        flow._state.awaiting_user_input = True
+
+        result = flow._handle_dcat_url("https://example.com/dcat.ttl")
+
+        assert result.dcat_source_url == "https://example.com/dcat.ttl"
+        assert result.current_state == FlowState.ASK_DCAT_INCLUSION
+        assert result.awaiting_user_input is True
+
+    def test_empty_url_skipped_goes_to_ask_inclusion(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.ASK_DCAT_URL
+        flow._state.generated_rml = "some rml"
+        flow._state.csv_path = "/data/file.csv"
+        flow._state.awaiting_user_input = True
+
+        result = flow._handle_dcat_url("")
+
+        assert result.dcat_source_url is None
+        assert result.current_state == FlowState.ASK_DCAT_INCLUSION
+
+
+class TestDcatInclusionFlow:
+    """Tests for the ASK_DCAT_INCLUSION state handler."""
+
+    def test_yes_includes_dcat_and_goes_to_preview(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.ASK_DCAT_INCLUSION
+        flow._state.generated_rml = "some rml"
+        flow._state.csv_path = "/data/file.csv"
+        flow._state.awaiting_user_input = True
+
+        result = flow._handle_dcat_inclusion("yes")
+
+        assert result.include_dcat_in_pr is True
+        assert result.current_state == FlowState.PREVIEW
+
+    def test_no_excludes_dcat_and_goes_to_preview(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.ASK_DCAT_INCLUSION
+        flow._state.generated_rml = "some rml"
+        flow._state.csv_path = "/data/file.csv"
+        flow._state.awaiting_user_input = True
+
+        result = flow._handle_dcat_inclusion("no")
+
+        assert result.include_dcat_in_pr is False
+        assert result.current_state == FlowState.PREVIEW
+
+    def test_unrecognised_prompts_again(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.ASK_DCAT_INCLUSION
+        flow._state.generated_rml = "some rml"
+        flow._state.csv_path = "/data/file.csv"
+        flow._state.awaiting_user_input = True
+
+        result = flow._handle_dcat_inclusion("maybe")
+
+        assert result.awaiting_user_input is True
+        assert result.current_state == FlowState.ASK_DCAT_INCLUSION
+
+
+class TestContinueWithInputRouting:
+    """Tests that continue_with_input routes new states correctly."""
+
+    def test_routes_ask_csv_url(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.ASK_CSV_URL
+        flow._state.csv_path = "/data/file.csv"
+        flow._state.generated_rml = "some rml"
+        flow._state.awaiting_user_input = True
+        flow._state.dcat_path = None
+
+        result = flow.continue_with_input("https://example.com/data.csv")
+
+        assert result.csv_source_url == "https://example.com/data.csv"
+
+    def test_routes_ask_dcat_url(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.ASK_DCAT_URL
+        flow._state.csv_path = "/data/file.csv"
+        flow._state.generated_rml = "some rml"
+        flow._state.awaiting_user_input = True
+
+        result = flow.continue_with_input("https://example.com/dcat.ttl")
+
+        assert result.dcat_source_url == "https://example.com/dcat.ttl"
+        assert result.current_state == FlowState.ASK_DCAT_INCLUSION
+
+    def test_routes_ask_dcat_inclusion(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        flow._state.current_state = FlowState.ASK_DCAT_INCLUSION
+        flow._state.csv_path = "/data/file.csv"
+        flow._state.generated_rml = "some rml"
+        flow._state.awaiting_user_input = True
+
+        result = flow.continue_with_input("yes")
+
+        assert result.include_dcat_in_pr is True
+        assert result.current_state == FlowState.PREVIEW
+
+
+class TestPrDescriptionUsesUrls:
+    """Test that _build_pr_description uses source URLs when available."""
+
+    def test_csv_url_in_description(self):
+        state = GraphState(
+            csv_path="/data/file.csv",
+            csv_source_url="https://example.com/data.csv",
+        )
+        result = _build_pr_description(state, "test-mapping")
+        assert "https://example.com/data.csv" in result
+        assert "`/data/file.csv`" not in result
+
+    def test_dcat_url_in_description(self):
+        state = GraphState(
+            csv_path="/data/file.csv",
+            dcat_path="/data/dcat.ttl",
+            dcat_source_url="https://example.com/dcat.ttl",
+        )
+        result = _build_pr_description(state, "test-mapping")
+        assert "https://example.com/dcat.ttl" in result
+        assert "`/data/dcat.ttl`" not in result
+
+    def test_not_provided_when_no_url(self):
+        state = GraphState(
+            csv_path="/data/file.csv",
+            dcat_path="/data/dcat.ttl",
+        )
+        result = _build_pr_description(state, "test-mapping")
+        # Local paths should NOT appear — only public URLs are shown
+        assert "`/data/file.csv`" not in result
+        assert "`/data/dcat.ttl`" not in result
+        assert "(not provided)" in result
+
+
+class TestIsAwaitingHelpers:
+    """Tests for is_awaiting_* helper methods."""
+
+    def test_is_awaiting_csv_url(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        assert flow.is_awaiting_csv_url() is False
+
+        flow._state.current_state = FlowState.ASK_CSV_URL
+        flow._state.awaiting_user_input = True
+        assert flow.is_awaiting_csv_url() is True
+
+    def test_is_awaiting_dcat_url(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        assert flow.is_awaiting_dcat_url() is False
+
+        flow._state.current_state = FlowState.ASK_DCAT_URL
+        flow._state.awaiting_user_input = True
+        assert flow.is_awaiting_dcat_url() is True
+
+    def test_is_awaiting_dcat_inclusion(self, mock_config, mock_ai_service):
+        flow = MappingFlow(mock_config, mock_ai_service)
+        assert flow.is_awaiting_dcat_inclusion() is False
+
+        flow._state.current_state = FlowState.ASK_DCAT_INCLUSION
+        flow._state.awaiting_user_input = True
+        assert flow.is_awaiting_dcat_inclusion() is True

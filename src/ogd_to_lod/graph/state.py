@@ -14,6 +14,10 @@ class FlowState(Enum):
     REFINE = "refine"
     GENERATE = "generate"
     VALIDATE = "validate"
+    CONFIRM_NAME = "confirm_name"
+    ASK_CSV_URL = "ask_csv_url"
+    ASK_DCAT_URL = "ask_dcat_url"
+    ASK_DCAT_INCLUSION = "ask_dcat_inclusion"
     PREVIEW = "preview"
     CREATE_PR = "create_pr"
     END = "end"
@@ -117,6 +121,24 @@ class GraphState:
     validation_error: str | None = None
     validation_retry_count: int = 0
 
+    # AI-generated summary of mapping decisions (populated in PREVIEW state)
+    mapping_decisions: str | None = None
+
+    # Mapping name (populated in CONFIRM_NAME state, user-editable)
+    mapping_name: str | None = None
+
+    # Source URLs (populated in ASK_CSV_URL / ASK_DCAT_URL states)
+    csv_source_url: str | None = None
+    dcat_source_url: str | None = None
+
+    # DCAT inclusion in PR (populated in ASK_DCAT_INCLUSION state)
+    include_dcat_in_pr: bool = False
+    dcat_raw_content: str | None = None
+    dcat_source_format: str | None = None
+
+    # PR description (populated in PREVIEW state)
+    pr_description: str | None = None
+
     # PR info (populated in CREATE_PR state)
     pr_url: str | None = None
     pr_number: int | None = None
@@ -155,6 +177,14 @@ class GraphState:
             "awaiting_user_input": self.awaiting_user_input,
             "generated_rml": self.generated_rml,
             "rdf_preview": self.rdf_preview,
+            "mapping_decisions": self.mapping_decisions,
+            "mapping_name": self.mapping_name,
+            "csv_source_url": self.csv_source_url,
+            "dcat_source_url": self.dcat_source_url,
+            "include_dcat_in_pr": self.include_dcat_in_pr,
+            "dcat_raw_content": self.dcat_raw_content,
+            "dcat_source_format": self.dcat_source_format,
+            "pr_description": self.pr_description,
             "validation_error": self.validation_error,
             "validation_retry_count": self.validation_retry_count,
             "pr_url": self.pr_url,

@@ -1,6 +1,7 @@
 """Node functions for the LangGraph conversation flow."""
 
 import re
+from pathlib import Path
 from typing import Any
 
 import yaml
@@ -8,8 +9,15 @@ import yaml
 from ogd_to_lod.ai import AIService
 from ogd_to_lod.config import Config
 from ogd_to_lod.github import GitHubService, PRCreationError
+from ogd_to_lod.github.pr_template import (
+    build_csv_preview_section,
+    build_mapping_structure_section,
+    build_rdf_preview_section,
+    load_pr_template,
+    render_pr_template,
+)
 from ogd_to_lod.logging import get_logger
-from ogd_to_lod.parsers import CSVParseError, DCATParseError, parse_csv, parse_dcat
+from ogd_to_lod.parsers import CSVParseError, DCATParseError, dcat_format_to_extension, parse_csv, parse_dcat
 from ogd_to_lod.rml import RMLGenerationError, RMLGenerator
 from ogd_to_lod.validation import RMLValidator, ValidationResult
 
@@ -81,7 +89,7 @@ def analyze_node(state: GraphState, config: Config) -> GraphState:
 
     # Parse CSV
     try:
-        csv_data = parse_csv(state.csv_path)
+        csv_data = parse_csv(state.csv_path, sample_rows=10)
         state.csv_schema = {
             "source": csv_data.source,
             "columns": [
@@ -93,7 +101,7 @@ def analyze_node(state: GraphState, config: Config) -> GraphState:
                 for col in csv_data.columns
             ],
             "total_rows": csv_data.total_rows,
-            "sample_rows": csv_data.sample_rows[:3],
+            "sample_rows": csv_data.sample_rows[:10],
             "delimiter": csv_data.delimiter,
         }
         logger.debug(f"Parsed CSV with {len(csv_data.columns)} columns")
@@ -125,6 +133,8 @@ def analyze_node(state: GraphState, config: Config) -> GraphState:
                     else None
                 ),
             }
+            state.dcat_raw_content = dcat_data.raw_content
+            state.dcat_source_format = dcat_data.source_format
             logger.debug(f"Parsed DCAT: {dcat_data.title}")
         except DCATParseError as e:
             logger.warning(f"Failed to parse DCAT: {e}")
@@ -370,14 +380,82 @@ def generate_node(state: GraphState, ai_service: AIService) -> GraphState:
     return state
 
 
-def preview_node(state: GraphState) -> GraphState:
-    """Display RML preview and wait for user confirmation to create PR.
+def suggest_mapping_name(state: GraphState) -> str:
+    """Derive a mapping name from DCAT title (preferred) or CSV filename (fallback).
+
+    Args:
+        state: Current graph state.
+
+    Returns:
+        A slug-style mapping name suitable for branch and file names.
+    """
+    # Prefer DCAT title
+    if state.dcat_metadata and state.dcat_metadata.get("title"):
+        raw = state.dcat_metadata["title"]
+    elif state.csv_path:
+        csv_filename = state.csv_path.split("/")[-1].split("\\")[-1]
+        raw = csv_filename.rsplit(".", 1)[0] if "." in csv_filename else csv_filename
+    else:
+        raw = "mapping"
+
+    # Normalise: lowercase, replace non-alphanum with hyphens, collapse/strip
+    slug = re.sub(r"[^a-z0-9]+", "-", raw.lower()).strip("-")
+    return slug or "mapping"
+
+
+def confirm_name_node(state: GraphState) -> GraphState:
+    """Ask the user to confirm or change the mapping name.
+
+    Suggests a mapping name (from DCAT title or CSV filename) and waits
+    for the user to accept it or type a different name.
 
     Args:
         state: Current graph state with generated RML.
 
     Returns:
-        Updated state awaiting user confirmation.
+        Updated state awaiting name confirmation.
+    """
+    logger.info("Entering CONFIRM_NAME state")
+
+    if not state.generated_rml:
+        state.error_message = "No RML generated for preview"
+        state.current_state = FlowState.ERROR
+        return state
+
+    # Suggest mapping name if not already set (e.g. by user override)
+    if not state.mapping_name:
+        state.mapping_name = suggest_mapping_name(state)
+        logger.debug("Suggested mapping name: %s", state.mapping_name)
+
+    state.current_state = FlowState.CONFIRM_NAME
+    state.awaiting_user_input = True
+    state.add_message(
+        "assistant",
+        f"Suggested mapping name: '{state.mapping_name}'. "
+        "Press Enter to accept or type a different name:"
+    )
+
+    logger.info("Awaiting name confirmation")
+
+    return state
+
+
+def preview_node(state: GraphState, ai_service: AIService | None = None) -> GraphState:
+    """Build the PR description and show it for confirmation.
+
+    Builds the full PR description from the template and stores it in
+    ``state.pr_description``, then asks the user to confirm pushing.
+
+    When *ai_service* is provided and ``state.mapping_decisions`` is not
+    yet set, a short AI-generated summary of the key mapping decisions
+    is produced and stored in the state.
+
+    Args:
+        state: Current graph state with confirmed mapping name.
+        ai_service: Optional AI service for generating decision summaries.
+
+    Returns:
+        Updated state awaiting push confirmation.
     """
     logger.info("Entering PREVIEW state")
 
@@ -386,14 +464,36 @@ def preview_node(state: GraphState) -> GraphState:
         state.current_state = FlowState.ERROR
         return state
 
-    # The CLI will display the RML, we just need to wait for confirmation
+    # Generate mapping decisions summary if AI service is available
+    if ai_service is not None and state.mapping_decisions is None:
+        try:
+            prompt = (
+                "Based on the conversation so far, write a brief summary (3-5 bullet points) "
+                "of the key mapping decisions:\n"
+                "- Which columns became dimensions vs measures and why\n"
+                "- Any columns that were dropped and why\n"
+                "- Hierarchy or aggregation choices\n"
+                "Keep it concise — this will appear in a PR description."
+            )
+            decisions = ai_service.send_message(prompt)
+            state.mapping_decisions = decisions.strip()
+            logger.debug("Generated mapping decisions summary")
+        except Exception:
+            logger.warning("Failed to generate mapping decisions summary", exc_info=True)
+
+    # Build and store PR description
+    mapping_name = state.mapping_name or "mapping"
+    state.pr_description = _build_pr_description(state, mapping_name)
+
+    state.current_state = FlowState.PREVIEW
     state.awaiting_user_input = True
     state.add_message(
         "assistant",
-        "RML mapping has been generated. Would you like to create a PR with this mapping?"
+        f"Here is the PR that will be created:\n\n{state.pr_description}\n\n"
+        "Push to GitHub? (yes/no)"
     )
 
-    logger.info("Awaiting user confirmation for PR creation")
+    logger.info("Awaiting push confirmation")
 
     return state
 
@@ -421,12 +521,23 @@ def create_pr_node(state: GraphState, config: Config) -> GraphState:
         state.current_state = FlowState.ERROR
         return state
 
-    # Derive mapping name from CSV filename
-    csv_filename = state.csv_path.split("/")[-1].split("\\")[-1]
-    mapping_name = csv_filename.rsplit(".", 1)[0] if "." in csv_filename else csv_filename
+    # Use state.mapping_name if set, otherwise fall back to CSV filename
+    if state.mapping_name:
+        mapping_name = state.mapping_name
+    else:
+        csv_filename = state.csv_path.split("/")[-1].split("\\")[-1]
+        mapping_name = csv_filename.rsplit(".", 1)[0] if "." in csv_filename else csv_filename
 
     # Build PR description
     pr_description = _build_pr_description(state, mapping_name)
+
+    # Determine DCAT file for commit
+    dcat_content = None
+    dcat_filename = None
+    if state.include_dcat_in_pr and state.dcat_raw_content:
+        fmt = state.dcat_source_format or "turtle"
+        dcat_filename = f"metadata{dcat_format_to_extension(fmt)}"
+        dcat_content = state.dcat_raw_content
 
     # Create the PR
     try:
@@ -435,6 +546,8 @@ def create_pr_node(state: GraphState, config: Config) -> GraphState:
             mapping_name=mapping_name,
             rml_content=state.generated_rml,
             description=pr_description,
+            dcat_content=dcat_content,
+            dcat_filename=dcat_filename,
         )
 
         state.pr_url = result.pr_url
@@ -535,7 +648,7 @@ def _format_proposal_summary(proposal: MappingProposal) -> str:
 
 
 def _build_pr_description(state: GraphState, mapping_name: str) -> str:
-    """Build a human-readable PR description.
+    """Build a human-readable PR description using the external template.
 
     Args:
         state: Current graph state.
@@ -544,65 +657,33 @@ def _build_pr_description(state: GraphState, mapping_name: str) -> str:
     Returns:
         Formatted PR description in markdown.
     """
-    lines = [
-        f"## RML Mapping: {mapping_name}",
-        "",
-    ]
+    template_text = load_pr_template(Path("config/pr_template.md"))
 
-    # Add data source info
-    if state.csv_path:
-        lines.append(f"**CSV Source:** `{state.csv_path}`")
-    if state.dcat_path:
-        lines.append(f"**DCAT Metadata:** `{state.dcat_path}`")
-    if state.base_uri:
-        lines.append(f"**Base URI:** `{state.base_uri}`")
-    lines.append("")
+    # Derive dataset name: prefer DCAT title, fall back to mapping_name
+    dataset_name = mapping_name
+    if state.dcat_metadata and state.dcat_metadata.get("title"):
+        dataset_name = state.dcat_metadata["title"]
 
-    # Add DCAT metadata if available
-    if state.dcat_metadata:
-        if state.dcat_metadata.get("title"):
-            lines.append(f"**Dataset Title:** {state.dcat_metadata['title']}")
-        if state.dcat_metadata.get("description"):
-            desc = state.dcat_metadata["description"]
-            if len(desc) > 200:
-                desc = desc[:200] + "..."
-            lines.append(f"**Description:** {desc}")
-        lines.append("")
+    # Derive dataset description from DCAT
+    dataset_description = ""
+    if state.dcat_metadata and state.dcat_metadata.get("description"):
+        desc = state.dcat_metadata["description"]
+        dataset_description = desc[:200] + "..." if len(desc) > 200 else desc
 
-    # Add mapping summary
-    if state.mapping_proposal:
-        lines.append("### Mapping Structure")
-        lines.append("")
+    data = {
+        "dataset_name": dataset_name,
+        "dataset_description": dataset_description,
+        "csv_source": state.csv_source_url or "(not provided)",
+        "dcat_source": state.dcat_source_url or "(not provided)",
+        "base_uri": f"`{state.base_uri}`" if state.base_uri else "",
+        "mapping_structure": build_mapping_structure_section(
+            state.mapping_proposal, state.mapping_decisions
+        ),
+        "csv_preview": build_csv_preview_section(state.csv_schema),
+        "rdf_preview": build_rdf_preview_section(state.rdf_preview),
+    }
 
-        if state.mapping_proposal.dimensions:
-            lines.append("**Dimensions:**")
-            for dim in state.mapping_proposal.dimensions:
-                dim_str = f"- `{dim.column}` ({dim.dimension_type})"
-                if dim.granularity:
-                    dim_str += f" - granularity: {dim.granularity}"
-                if dim.hierarchy:
-                    dim_str += f" - hierarchy: {dim.hierarchy}"
-                lines.append(dim_str)
-            lines.append("")
-
-        if state.mapping_proposal.measures:
-            lines.append("**Measures:**")
-            for measure in state.mapping_proposal.measures:
-                measure_str = f"- `{measure.column}`"
-                if measure.unit:
-                    measure_str += f" ({measure.unit})"
-                if measure.aggregation:
-                    measure_str += f" - aggregation: {measure.aggregation}"
-                lines.append(measure_str)
-            lines.append("")
-
-    # Add footer
-    lines.extend([
-        "---",
-        "_Generated by [OGD to LOD](https://github.com/redlink-gmbh/ogd-to-lod)_",
-    ])
-
-    return "\n".join(lines)
+    return render_pr_template(template_text, data)
 
 
 def _build_summary(csv_schema: dict[str, Any] | None, dcat_metadata: dict[str, Any] | None) -> str:
