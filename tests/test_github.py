@@ -3,7 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from github import GithubException
+from github import Auth, GithubException
 
 from ogd_to_lod.config import GitHubConfig
 from ogd_to_lod.github import GitHubService, GitHubError, PRCreationError
@@ -32,7 +32,10 @@ class TestGitHubService:
         """Test service initialization."""
         service = GitHubService(github_config)
 
-        mock_github.assert_called_once_with("test-token")
+        mock_github.assert_called_once()
+        auth_arg = mock_github.call_args.kwargs["auth"]
+        assert isinstance(auth_arg, Auth.Token)
+        assert auth_arg.token == "test-token"
         assert service._config == github_config
 
     def test_repo_lazy_loading(self, github_config, mock_github):

@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from github import Github, GithubException
+from github import Auth, Github, GithubException
 from github.Repository import Repository
 
 from ogd_to_lod.config import GitHubConfig
@@ -47,7 +47,7 @@ class GitHubService:
             config: GitHub configuration with repo and token.
         """
         self._config = config
-        self._client = Github(config.token)
+        self._client = Github(auth=Auth.Token(config.token))
         self._repo: Repository | None = None
 
     @property

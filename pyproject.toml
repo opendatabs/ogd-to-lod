@@ -47,3 +47,7 @@ testpaths = ["tests"]
 markers = [
     "integration: tests requiring RMLMapper JAR and Java runtime",
 ]
+filterwarnings = [
+    "ignore::DeprecationWarning:rdflib",
+    "ignore::DeprecationWarning:pyparsing",
+]
