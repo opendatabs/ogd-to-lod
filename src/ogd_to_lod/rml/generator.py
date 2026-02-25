@@ -65,7 +65,6 @@ class RMLGenerator:
         # generated YARRRML is portable and can be deployed with different CSV sources.
         prompt = RML_GENERATION_PROMPT.format(
             base_uri=base_uri,
-            csv_path=CSV_SOURCE_PLACEHOLDER,
             mapping_proposal=proposal_text,
             csv_schema=schema_text,
         )

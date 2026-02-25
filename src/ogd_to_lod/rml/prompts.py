@@ -30,15 +30,17 @@ prefixes:
 
 ## Source Definition
 
-Use the placeholder `{csv_path}` for the file path exactly as shown — \
-it will be replaced with the actual CSV path at deployment time.
+Declare a named source `csvSource` using the placeholder `{{CSV_SOURCE}}` \
+for the file path — it will be replaced with the actual path at validation time.
 
 ```yaml
 sources:
   csvSource:
-    access: "{csv_path}"
+    access: "{{CSV_SOURCE}}"
     referenceFormulation: csv
 ```
+
+Reference it in every mapping entry as `[csvSource~source]`.
 
 ## Subject Template
 
@@ -70,12 +72,11 @@ For each key dimension, create a separate mapping entry to generate \
 typed dimension value resources. All mapping entries live under the top-level \
 `mappings:` key.
 
-EXAMPLE:
 ```yaml
 mappings:
   observations:
     sources:
-      -  [{csv_path}~csv]
+      - [csvSource~source]
     s: ex-obs:$(YearCol)_$(RegionCodeCol)
     po:
       - [a, cube:Observation]
@@ -83,17 +84,11 @@ mappings:
       - [ex-property:RAUM, ex-code:$(RegionCodeCol)~iri]
   regionCodes:
     sources:
-      - [{csv_path}~csv]
+      - [csvSource~source]
     s: ex-code:$(RegionCodeCol)
     po:
       - [a, schema:DefinedTerm]
       - [schema:name, $(RegionCol)]
-  regionRelation:
-    sources:
-      - [{csv_path}~csv]
-    s: ex-code:$(RegionCol)
-    po:
-      - [skos:broader, $(RegionColBroader)]
 ```
 
 ## Approved Mapping Proposal

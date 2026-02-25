@@ -317,20 +317,22 @@ class RMLValidator:
     def _replace_csv_placeholder(rml_content: str, csv_filename: str) -> str:
         """Replace CSV source placeholder with actual filename.
 
-        Replaces all occurrences of {{CSV_SOURCE}} with the provided filename.
-        If the placeholder is not found, the YARRRML is returned unchanged.
+        Handles both {{CSV_SOURCE}} (double braces, as written in the prompt
+        template) and {CSV_SOURCE} (single braces, produced when Python's
+        .format() unescapes the double braces before sending to the LLM).
 
         Args:
-            rml_content: YARRRML content possibly containing {{CSV_SOURCE}} placeholder.
+            rml_content: YARRRML content possibly containing the placeholder.
             csv_filename: The actual CSV filename to substitute.
 
         Returns:
             YARRRML content with placeholder replaced.
         """
-        if CSV_SOURCE_PLACEHOLDER in rml_content:
-            logger.debug(f"Replacing {CSV_SOURCE_PLACEHOLDER} with {csv_filename}")
-            return rml_content.replace(CSV_SOURCE_PLACEHOLDER, csv_filename)
-        return rml_content
+        result = rml_content.replace("{{CSV_SOURCE}}", csv_filename)
+        result = result.replace("{CSV_SOURCE}", csv_filename)
+        if result != rml_content:
+            logger.debug(f"Replaced CSV_SOURCE placeholder with {csv_filename}")
+        return result
 
     # ── Error categorisation ─────────────────────────────────────────────
 

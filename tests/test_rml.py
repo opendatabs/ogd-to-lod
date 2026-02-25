@@ -332,7 +332,7 @@ class TestRMLPrompts:
     def test_prompt_has_placeholders(self):
         """Test that the prompt has required placeholders."""
         assert "{base_uri}" in RML_GENERATION_PROMPT
-        assert "{csv_path}" in RML_GENERATION_PROMPT
+        assert "CSV_SOURCE" in RML_GENERATION_PROMPT
         assert "{mapping_proposal}" in RML_GENERATION_PROMPT
         assert "{csv_schema}" in RML_GENERATION_PROMPT
 
