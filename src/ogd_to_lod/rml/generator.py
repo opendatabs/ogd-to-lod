@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 
 # Placeholder for CSV source path in generated YARRRML
 # This should be replaced with the actual CSV path at deployment time
-CSV_SOURCE_PLACEHOLDER = "{{CSV_SOURCE}}"
+CSV_SOURCE_PLACEHOLDER = "{CSV_SOURCE}"
 
 
 class RMLGenerationError(Exception):

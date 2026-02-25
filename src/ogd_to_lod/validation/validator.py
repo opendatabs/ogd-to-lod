@@ -20,7 +20,7 @@ import yaml
 from ogd_to_lod.logging import get_logger
 
 # Import the CSV source placeholder constant
-CSV_SOURCE_PLACEHOLDER = "{{CSV_SOURCE}}"
+CSV_SOURCE_PLACEHOLDER = "{CSV_SOURCE}"
 
 logger = get_logger(__name__)
 
@@ -133,7 +133,7 @@ class RMLValidator:
         All files share a single temp directory mounted at /data in both containers.
 
         Args:
-            rml_content: YARRRML mapping (may contain {{CSV_SOURCE}} placeholder).
+            rml_content: YARRRML mapping (may contain {CSV_SOURCE} placeholder).
             csv_path: Path to the source CSV file.
             sample_rows: Number of data rows to include in sample (default: 3).
             output_format: Output format for RDF (turtle, nquads, jsonld).
@@ -317,10 +317,6 @@ class RMLValidator:
     def _replace_csv_placeholder(rml_content: str, csv_filename: str) -> str:
         """Replace CSV source placeholder with actual filename.
 
-        Handles both {{CSV_SOURCE}} (double braces, as written in the prompt
-        template) and {CSV_SOURCE} (single braces, produced when Python's
-        .format() unescapes the double braces before sending to the LLM).
-
         Args:
             rml_content: YARRRML content possibly containing the placeholder.
             csv_filename: The actual CSV filename to substitute.
@@ -328,11 +324,10 @@ class RMLValidator:
         Returns:
             YARRRML content with placeholder replaced.
         """
-        result = rml_content.replace("{{CSV_SOURCE}}", csv_filename)
-        result = result.replace("{CSV_SOURCE}", csv_filename)
-        if result != rml_content:
-            logger.debug(f"Replaced CSV_SOURCE placeholder with {csv_filename}")
-        return result
+        if CSV_SOURCE_PLACEHOLDER in rml_content:
+            logger.debug(f"Replacing {CSV_SOURCE_PLACEHOLDER} with {csv_filename}")
+            return rml_content.replace(CSV_SOURCE_PLACEHOLDER, csv_filename)
+        return rml_content
 
     # ── Error categorisation ─────────────────────────────────────────────
 

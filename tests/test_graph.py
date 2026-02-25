@@ -834,13 +834,13 @@ class TestCreatePrNodeEnhancements:
 
         state = GraphState(
             csv_path="/data/test.csv",
-            generated_rml='@prefix rml: <http://semweb.mmlab.be/ns/rml#> .\nex:M rml:logicalSource [ rml:source "{{CSV_SOURCE}}" ].',
+            generated_rml='@prefix rml: <http://semweb.mmlab.be/ns/rml#> .\nex:M rml:logicalSource [ rml:source "{CSV_SOURCE}" ].',
             mapping_name="test",
         )
         create_pr_node(state, mock_config)
         call_args = mock_service.create_mapping_pr.call_args
         rml_committed = call_args.kwargs["rml_content"]
-        assert "{{CSV_SOURCE}}" in rml_committed
+        assert "{CSV_SOURCE}" in rml_committed
 
 
 class TestBuildPrDescriptionIncludesRdfPreview:

@@ -33,7 +33,7 @@ prefixes:
 mappings:
   observations:
     sources:
-      - access: "{{CSV_SOURCE}}"
+      - access: "{CSV_SOURCE}"
         referenceFormulation: csv
         delimiter: ","
     s: ex-obs:$(year)_$(region)
@@ -44,7 +44,7 @@ mappings:
       - [ex-property:value, $(value), xsd:decimal]
   regionCodes:
     sources:
-      - access: "{{CSV_SOURCE}}"
+      - access: "{CSV_SOURCE}"
         referenceFormulation: csv
         delimiter: ","
     s: ex-code:$(region)
