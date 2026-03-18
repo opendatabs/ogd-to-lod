@@ -17,7 +17,12 @@ from ogd_to_lod.github.pr_template import (
     render_pr_template,
 )
 from ogd_to_lod.logging import get_logger
-from ogd_to_lod.parsers import CSVParseError, DCATParseError, dcat_format_to_extension, parse_csv, parse_dcat
+from ogd_to_lod.parsers import (
+    CSVParseError,
+    ContextParseError,
+    parse_context,
+    parse_csv,
+)
 from ogd_to_lod.rml import RMLGenerationError, RMLGenerator
 from ogd_to_lod.validation import RMLValidator, ValidationResult
 
@@ -60,10 +65,12 @@ def init_node(state: GraphState, config: Config) -> GraphState:
     if not state.base_uri:
         state.base_uri = config.rml.base_uri
 
+    context_info = ""
+    if state.context_paths:
+        context_info = f" with context: {', '.join(state.context_paths)}"
     state.add_message(
         "system",
-        f"Starting mapping for CSV: {state.csv_path}"
-        + (f" with DCAT: {state.dcat_path}" if state.dcat_path else ""),
+        f"Starting mapping for CSV: {state.csv_path}{context_info}",
     )
 
     # Transition to ANALYZE
@@ -73,14 +80,16 @@ def init_node(state: GraphState, config: Config) -> GraphState:
     return state
 
 
-def analyze_node(state: GraphState, config: Config) -> GraphState:
-    """Analyze CSV and DCAT inputs.
+def analyze_node(state: GraphState, config: Config, ai_service: Any | None = None) -> GraphState:
+    """Analyze CSV and context inputs.
 
-    Parses the CSV file and optional DCAT metadata.
+    Parses the CSV file and any provided context files (DCAT, freetext,
+    markdown, JSON, etc.) via AI-based normalization.
 
     Args:
         state: Current graph state.
         config: Application configuration.
+        ai_service: AI service for context normalization (injected by flow).
 
     Returns:
         Updated state with parsed data.
@@ -110,38 +119,32 @@ def analyze_node(state: GraphState, config: Config) -> GraphState:
         state.current_state = FlowState.ERROR
         return state
 
-    # Parse DCAT if provided
-    if state.dcat_path:
+    csv_column_names = [col.name for col in csv_data.columns]
+
+    # Parse context files if provided
+    if state.context_paths and ai_service is not None:
         try:
-            dcat_data = parse_dcat(state.dcat_path)
-            state.dcat_metadata = {
-                "title": dcat_data.title,
-                "description": dcat_data.description,
-                "publisher": dcat_data.publisher,
-                "keywords": dcat_data.keywords,
-                "temporal_coverage": (
-                    {
-                        "start": dcat_data.temporal_coverage.start_date,
-                        "end": dcat_data.temporal_coverage.end_date,
-                    }
-                    if dcat_data.temporal_coverage
-                    else None
-                ),
-                "spatial_coverage": (
-                    {"location": dcat_data.spatial_coverage.location}
-                    if dcat_data.spatial_coverage
-                    else None
-                ),
-            }
-            state.dcat_raw_content = dcat_data.raw_content
-            state.dcat_source_format = dcat_data.source_format
-            logger.debug(f"Parsed DCAT: {dcat_data.title}")
-        except DCATParseError as e:
-            logger.warning(f"Failed to parse DCAT: {e}")
-            # DCAT is optional, so we continue
+            dataset_context, raw_files, dcat_raw, dcat_fmt = parse_context(
+                sources=state.context_paths,
+                csv_column_names=csv_column_names,
+                ai_service=ai_service,
+            )
+            state.dataset_context = _serialize_dataset_context(dataset_context)
+            state.context_raw_files = raw_files
+            state.dcat_raw_content = dcat_raw
+            state.dcat_source_format = dcat_fmt
+            logger.debug(
+                "Parsed context from %d file(s): title=%s, columns=%d",
+                len(state.context_paths),
+                dataset_context.title,
+                len(dataset_context.column_contexts),
+            )
+        except ContextParseError as e:
+            logger.warning("Failed to parse context files: %s", e)
+            # Context is optional — continue without it
 
     # Build summary
-    state.parsed_summary = _build_summary(state.csv_schema, state.dcat_metadata)
+    state.parsed_summary = _build_summary(state.csv_schema, state.dataset_context)
 
     # Transition to PROPOSE
     state.current_state = FlowState.PROPOSE
@@ -173,22 +176,37 @@ Identify:
 1. Which columns should be dimensions (and their types: temporal, spatial, or categorical)
 2. Which columns should be measures (with units if applicable)
 3. Any hierarchies that should be created
+4. Which columns should be skipped (not mapped)
+5. Whether any dimension value comes from context metadata (not from a CSV column)
+6. Whether any context field (label, description) is used to enrich a property definition
 
 Provide your proposal in YAML format following this exact structure:
 
 ```yaml
 dimensions:
-  - column: <column_name>
+  - column: <column_name or property name like RAUM/ZEIT>
     type: <temporal|spatial|categorical>
     granularity: <optional: year, month, day, etc.>
     hierarchy: <optional: hierarchy name>
+    datatype: <optional: xsd:dateTime, xsd:date, xsd:string, etc.>
+    source: <optional: csv (default) or context>
+    static_value: <optional: the context field name (e.g. spatial_coverage) when source is context>
+    context_label: <optional: context field providing the property label/definition>
 measures:
   - column: <column_name>
     unit: <optional: unit of measurement>
     aggregation: <optional: sum, avg, count, etc.>
+    context_label: <optional: context field providing the property label/definition>
+skipped_columns:
+  - <column_name>
 ```
 
-Important: Use exactly the keys shown above (dimensions, measures, column, type, unit, etc.)."""
+Important:
+- Use exactly the keys shown above (dimensions, measures, skipped_columns, column, type, unit, etc.)
+- List ALL columns that should not be mapped under skipped_columns
+- Use source: context and static_value when a property value is taken from context metadata (not from a CSV column)
+- Use datatype for temporal columns that need a specific XSD type (e.g. xsd:dateTime)
+- Use context_label to indicate which context field provides the human-readable label or definition for a property"""
 
     logger.debug("Sending proposal request to AI")
     response = ai_service.send_message(prompt)
@@ -358,6 +376,7 @@ def generate_node(state: GraphState, ai_service: AIService) -> GraphState:
             csv_schema=state.csv_schema,
             csv_path=state.csv_path,
             base_uri=state.base_uri,
+            dataset_context=state.dataset_context,
         )
 
         state.generated_rml = rml_content
@@ -389,9 +408,9 @@ def suggest_mapping_name(state: GraphState) -> str:
     Returns:
         A slug-style mapping name suitable for branch and file names.
     """
-    # Prefer DCAT title
-    if state.dcat_metadata and state.dcat_metadata.get("title"):
-        raw = state.dcat_metadata["title"]
+    # Prefer dataset context title
+    if state.dataset_context and state.dataset_context.get("title"):
+        raw = state.dataset_context["title"]
     elif state.csv_path:
         csv_filename = state.csv_path.split("/")[-1].split("\\")[-1]
         raw = csv_filename.rsplit(".", 1)[0] if "." in csv_filename else csv_filename
@@ -531,13 +550,11 @@ def create_pr_node(state: GraphState, config: Config) -> GraphState:
     # Build PR description
     pr_description = _build_pr_description(state, mapping_name)
 
-    # Determine DCAT file for commit
-    dcat_content = None
-    dcat_filename = None
-    if state.include_dcat_in_pr and state.dcat_raw_content:
-        fmt = state.dcat_source_format or "turtle"
-        dcat_filename = f"metadata{dcat_format_to_extension(fmt)}"
-        dcat_content = state.dcat_raw_content
+    # Determine output folder (CLI param) and CSV details
+    output_folder = state.output_folder or mapping_name
+    csv_path_obj = Path(state.csv_path)
+    csv_filename = csv_path_obj.name
+    csv_content = csv_path_obj.read_text(encoding="utf-8")
 
     # Create the PR
     try:
@@ -546,8 +563,10 @@ def create_pr_node(state: GraphState, config: Config) -> GraphState:
             mapping_name=mapping_name,
             rml_content=state.generated_rml,
             description=pr_description,
-            dcat_content=dcat_content,
-            dcat_filename=dcat_filename,
+            output_folder=output_folder,
+            csv_filename=csv_filename,
+            csv_content=csv_content,
+            mappings_folder=config.github.mappings_folder,
         )
 
         state.pr_url = result.pr_url
@@ -570,6 +589,52 @@ def create_pr_node(state: GraphState, config: Config) -> GraphState:
         state.current_state = FlowState.ERROR
 
     return state
+
+
+def _serialize_dataset_context(context: Any) -> dict[str, Any]:
+    """Serialize a DatasetContext to a JSON-compatible dict for GraphState storage."""
+    from ogd_to_lod.parsers.models import DatasetContext
+
+    if not isinstance(context, DatasetContext):
+        return {}
+
+    column_contexts = {}
+    for name, col_ctx in context.column_contexts.items():
+        column_contexts[name] = {
+            "header_name": col_ctx.header_name,
+            "description": col_ctx.description,
+            "comment": col_ctx.comment,
+        }
+
+    return {
+        "sources": context.sources,
+        "title": context.title,
+        "description": context.description,
+        "publisher": context.publisher,
+        "keywords": context.keywords,
+        "temporal_coverage": (
+            {
+                "start": context.temporal_coverage.start_date,
+                "end": context.temporal_coverage.end_date,
+            }
+            if context.temporal_coverage
+            else None
+        ),
+        "spatial_coverage": (
+            {"location": context.spatial_coverage.location}
+            if context.spatial_coverage
+            else None
+        ),
+        "identifier": context.identifier,
+        "issued": context.issued,
+        "modified": context.modified,
+        "language": context.language,
+        "license": context.license,
+        "access_rights": context.access_rights,
+        "contact_point": context.contact_point,
+        "column_contexts": column_contexts,
+        "source_format": context.source_format,
+    }
 
 
 def _format_proposal_summary(proposal: MappingProposal) -> str:
@@ -608,12 +673,23 @@ def _format_proposal_summary(proposal: MappingProposal) -> str:
                 details.append(f"granularity: {dim.granularity}")
             if dim.hierarchy:
                 details.append(f"hierarchy: {dim.hierarchy}")
+            if dim.datatype:
+                details.append(f"datatype: `{dim.datatype}`")
 
             if details:
                 dim_desc += f" — {', '.join(details)}"
 
-            # Add note about resource values
-            dim_desc += f"\n  - Values: `ex-code:{{{{value}}}}` (resources of type `schema:DefinedTerm`)"
+            # Show data source
+            if dim.source == "context":
+                static_ref = f" (`{dim.static_value}`)" if dim.static_value else ""
+                dim_desc += f"\n  - Source: static value from context metadata{static_ref}"
+            else:
+                # Add note about resource values from CSV
+                dim_desc += f"\n  - Values: `ex-code:{{{{value}}}}` (resources of type `schema:DefinedTerm`)"
+
+            # Show context label/definition enrichment
+            if dim.context_label:
+                dim_desc += f"\n  - Property definition from context: `{dim.context_label}`"
 
             lines.append(dim_desc)
         lines.append("")
@@ -635,7 +711,18 @@ def _format_proposal_summary(proposal: MappingProposal) -> str:
             if details:
                 measure_desc += f" — {', '.join(details)}"
 
+            if measure.context_label:
+                measure_desc += f"\n  - Property definition from context: `{measure.context_label}`"
+
             lines.append(measure_desc)
+        lines.append("")
+
+    if proposal.skipped_columns:
+        lines.append("### Skipped Columns")
+        lines.append("These columns will not be included in the mapping:")
+        lines.append("")
+        for col in proposal.skipped_columns:
+            lines.append(f"- ~~`{col}`~~")
         lines.append("")
 
     # Add explanation
@@ -659,22 +746,31 @@ def _build_pr_description(state: GraphState, mapping_name: str) -> str:
     """
     template_text = load_pr_template(Path("config/pr_template.md"))
 
-    # Derive dataset name: prefer DCAT title, fall back to mapping_name
+    # Derive dataset name: prefer context title, fall back to mapping_name
     dataset_name = mapping_name
-    if state.dcat_metadata and state.dcat_metadata.get("title"):
-        dataset_name = state.dcat_metadata["title"]
+    if state.dataset_context and state.dataset_context.get("title"):
+        dataset_name = state.dataset_context["title"]
 
-    # Derive dataset description from DCAT
+    # Derive dataset description from context
     dataset_description = ""
-    if state.dcat_metadata and state.dcat_metadata.get("description"):
-        desc = state.dcat_metadata["description"]
+    if state.dataset_context and state.dataset_context.get("description"):
+        desc = state.dataset_context["description"]
         dataset_description = desc[:200] + "..." if len(desc) > 200 else desc
+
+    # Build context files list for the PR template
+    if state.context_paths:
+        import pathlib
+        context_files_str = ", ".join(
+            f"`{pathlib.Path(p).name}`" for p in state.context_paths
+        )
+    else:
+        context_files_str = "(none provided)"
 
     data = {
         "dataset_name": dataset_name,
         "dataset_description": dataset_description,
         "csv_source": state.csv_source_url or "(not provided)",
-        "dcat_source": state.dcat_source_url or "(not provided)",
+        "context_files": context_files_str,
         "base_uri": f"`{state.base_uri}`" if state.base_uri else "",
         "mapping_structure": build_mapping_structure_section(
             state.mapping_proposal, state.mapping_decisions
@@ -686,7 +782,7 @@ def _build_pr_description(state: GraphState, mapping_name: str) -> str:
     return render_pr_template(template_text, data)
 
 
-def _build_summary(csv_schema: dict[str, Any] | None, dcat_metadata: dict[str, Any] | None) -> str:
+def _build_summary(csv_schema: dict[str, Any] | None, dataset_context: dict[str, Any] | None) -> str:
     """Build a human-readable summary of parsed data."""
     lines = []
 
@@ -696,22 +792,30 @@ def _build_summary(csv_schema: dict[str, Any] | None, dcat_metadata: dict[str, A
         lines.append(f"Total rows: {csv_schema.get('total_rows', 0)}")
         lines.append("")
         lines.append("### Columns")
+        column_contexts = (dataset_context or {}).get("column_contexts", {})
         for col in csv_schema.get("columns", []):
             samples = ", ".join(str(s)[:200] for s in col.get("samples", [])[:3])
-            lines.append(f"- **{col['name']}** ({col['type']}): {samples}")
+            col_name = col["name"]
+            line = f"- **{col_name}** ({col['type']}): {samples}"
+            if ctx := column_contexts.get(col_name):
+                if ctx.get("description"):
+                    line += f"\n  _{ctx['description']}_"
+            lines.append(line)
 
-    if dcat_metadata:
+    if dataset_context:
         lines.append("")
-        lines.append("## DCAT Metadata")
-        if dcat_metadata.get("title"):
-            lines.append(f"Title: {dcat_metadata['title']}")
-        if dcat_metadata.get("description"):
-            desc = dcat_metadata["description"][:200]
+        lines.append("## Dataset Context")
+        if dataset_context.get("title"):
+            lines.append(f"Title: {dataset_context['title']}")
+        if dataset_context.get("description"):
+            desc = dataset_context["description"][:200]
             lines.append(f"Description: {desc}...")
-        if dcat_metadata.get("publisher"):
-            lines.append(f"Publisher: {dcat_metadata['publisher']}")
-        if dcat_metadata.get("keywords"):
-            lines.append(f"Keywords: {', '.join(dcat_metadata['keywords'])}")
+        if dataset_context.get("publisher"):
+            lines.append(f"Publisher: {dataset_context['publisher']}")
+        if dataset_context.get("keywords"):
+            lines.append(f"Keywords: {', '.join(dataset_context['keywords'])}")
+        if dataset_context.get("source_format"):
+            lines.append(f"Format: {dataset_context['source_format']}")
 
     return "\n".join(lines)
 
@@ -742,12 +846,28 @@ def _build_ai_context(state: GraphState) -> str:
         for i, row in enumerate(state.csv_schema.get("sample_rows", [])[:3], 1):
             lines.append(f"  Row {i}: {row}")
 
-    if state.dcat_metadata:
+    if state.dataset_context:
         lines.append("")
-        lines.append("## DCAT Metadata")
-        for key, value in state.dcat_metadata.items():
+        lines.append("## Dataset Context")
+        for key, value in state.dataset_context.items():
+            if key == "column_contexts":
+                continue  # shown per-column below
             if value:
                 lines.append(f"- {key}: {value}")
+        # Column-level context
+        column_contexts = state.dataset_context.get("column_contexts", {})
+        if column_contexts:
+            lines.append("")
+            lines.append("## Column Descriptions")
+            for col_name, ctx in column_contexts.items():
+                desc = ctx.get("description") or ""
+                comment = ctx.get("comment") or ""
+                line = f"- {col_name}"
+                if desc:
+                    line += f": {desc}"
+                if comment:
+                    line += f" ({comment})"
+                lines.append(line)
 
     return "\n".join(lines)
 
@@ -790,6 +910,10 @@ def _parse_proposal(data: dict[str, Any]) -> MappingProposal:
             dimension_type=str(dim_type).lower(),
             granularity=dim_data.get("granularity"),
             hierarchy=dim_data.get("hierarchy"),
+            datatype=dim_data.get("datatype"),
+            source=dim_data.get("source"),
+            static_value=dim_data.get("static_value"),
+            context_label=dim_data.get("context_label"),
         )
         if dim.column:  # Only add if column name exists
             proposal.dimensions.append(dim)
@@ -819,9 +943,20 @@ def _parse_proposal(data: dict[str, Any]) -> MappingProposal:
             column=str(column),
             unit=measure_data.get("unit"),
             aggregation=measure_data.get("aggregation") or measure_data.get("agg"),
+            context_label=measure_data.get("context_label"),
         )
         if measure.column:  # Only add if column name exists
             proposal.measures.append(measure)
+
+    # Parse skipped columns
+    skipped_data = (
+        data.get("skipped_columns")
+        or data.get("skipped")
+        or data.get("skip")
+        or []
+    )
+    if isinstance(skipped_data, list):
+        proposal.skipped_columns = [str(c) for c in skipped_data if c]
 
     return proposal
 
@@ -1124,6 +1259,10 @@ def _parse_yaml_line_by_line(yaml_content: str) -> MappingProposal | None:
                 dimension_type=current_item.get('type', 'categorical'),
                 granularity=current_item.get('granularity'),
                 hierarchy=current_item.get('hierarchy'),
+                datatype=current_item.get('datatype'),
+                source=current_item.get('source'),
+                static_value=current_item.get('static_value'),
+                context_label=current_item.get('context_label'),
             )
             if dim.column:
                 proposal.dimensions.append(dim)
@@ -1132,9 +1271,14 @@ def _parse_yaml_line_by_line(yaml_content: str) -> MappingProposal | None:
                 column=current_item.get('column', ''),
                 unit=current_item.get('unit'),
                 aggregation=current_item.get('aggregation'),
+                context_label=current_item.get('context_label'),
             )
             if measure.column:
                 proposal.measures.append(measure)
+        elif current_section == 'skipped_columns':
+            col = current_item.get('column', '')
+            if col:
+                proposal.skipped_columns.append(col)
         current_item = {}
 
     for line in lines:
@@ -1149,6 +1293,10 @@ def _parse_yaml_line_by_line(yaml_content: str) -> MappingProposal | None:
             save_current_item()
             current_section = 'measures'
             continue
+        elif stripped.startswith('skipped_columns:') or stripped.startswith('skipped:'):
+            save_current_item()
+            current_section = 'skipped_columns'
+            continue
 
         # Skip empty lines
         if not stripped:
@@ -1156,12 +1304,17 @@ def _parse_yaml_line_by_line(yaml_content: str) -> MappingProposal | None:
 
         # Detect list item start
         if stripped.startswith('- '):
+            rest = stripped[2:].strip()
+            if current_section == 'skipped_columns':
+                # Plain list item — the value is the column name
+                if rest and ':' not in rest:
+                    proposal.skipped_columns.append(rest)
+                    continue
             # Save previous item if exists
             save_current_item()
             current_item = {}
 
             # Parse inline key-value if present (e.g., "- column: year")
-            rest = stripped[2:].strip()
             if ':' in rest:
                 key, value = rest.split(':', 1)
                 current_item[key.strip()] = value.strip()

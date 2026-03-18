@@ -331,17 +331,18 @@ class TestHelperFunctions:
         assert "100" in summary
 
     def test_build_summary_with_dcat(self):
-        """Test summary building with DCAT metadata."""
-        dcat_metadata = {
+        """Test summary building with dataset context."""
+        dataset_context = {
             "title": "Test Dataset",
             "description": "A test dataset for testing",
             "publisher": "Test Org",
             "keywords": ["test", "data"],
+            "column_contexts": {},
         }
 
-        summary = _build_summary(None, dcat_metadata)
+        summary = _build_summary(None, dataset_context)
 
-        assert "DCAT Metadata" in summary
+        assert "Dataset Context" in summary
         assert "Test Dataset" in summary
         assert "Test Org" in summary
 
@@ -717,7 +718,7 @@ class TestSuggestMappingName:
     def test_from_dcat_title(self):
         state = GraphState(
             csv_path="/data/file.csv",
-            dcat_metadata={"title": "Population Statistics 2024"},
+            dataset_context={"title": "Population Statistics 2024"},
         )
         assert suggest_mapping_name(state) == "population-statistics-2024"
 
@@ -732,7 +733,7 @@ class TestSuggestMappingName:
     def test_dcat_title_preferred_over_csv(self):
         state = GraphState(
             csv_path="/data/raw.csv",
-            dcat_metadata={"title": "Air Quality Measurements"},
+            dataset_context={"title": "Air Quality Measurements"},
         )
         name = suggest_mapping_name(state)
         assert "air-quality" in name
@@ -740,7 +741,7 @@ class TestSuggestMappingName:
 
     def test_special_chars_normalised(self):
         state = GraphState(
-            dcat_metadata={"title": "Data (2024) — v2.0"},
+            dataset_context={"title": "Data (2024) — v2.0"},
         )
         name = suggest_mapping_name(state)
         # Should only contain lowercase, digits, hyphens
@@ -765,7 +766,7 @@ class TestConfirmNameNode:
         state = GraphState(
             csv_path="/data/file.csv",
             generated_rml="@prefix rr: <http://example.org/> .",
-            dcat_metadata={"title": "Population Statistics 2024"},
+            dataset_context={"title": "Population Statistics 2024"},
         )
         result = confirm_name_node(state)
         assert result.mapping_name == "population-statistics-2024"
@@ -995,8 +996,8 @@ class TestCsvUrlFlow:
         flow._state.csv_path = "/data/file.csv"
         flow._state.generated_rml = "some rml"
         flow._state.awaiting_user_input = True
-        # No DCAT path → should go to PREVIEW
-        flow._state.dcat_path = None
+        # No context paths → should go to PREVIEW
+        flow._state.context_paths = []
 
         result = flow._handle_csv_url("")
 
@@ -1009,7 +1010,7 @@ class TestCsvUrlFlow:
         flow._state.csv_path = "/data/file.csv"
         flow._state.generated_rml = "some rml"
         flow._state.awaiting_user_input = True
-        flow._state.dcat_path = None
+        flow._state.context_paths = []
 
         result = flow._handle_csv_url("https://example.com/data.csv")
 
@@ -1021,83 +1022,55 @@ class TestCsvUrlFlow:
         flow._state.current_state = FlowState.ASK_CSV_URL
         flow._state.csv_path = "/data/file.csv"
         flow._state.generated_rml = "some rml"
-        flow._state.dcat_path = "/data/dcat.ttl"
+        flow._state.context_paths = ["/data/dcat.ttl"]
         flow._state.awaiting_user_input = True
 
         result = flow._handle_csv_url("https://example.com/data.csv")
 
         assert result.csv_source_url == "https://example.com/data.csv"
-        assert result.current_state == FlowState.ASK_DCAT_URL
+        assert result.current_state == FlowState.ASK_CONTEXT_INCLUSION
         assert result.awaiting_user_input is True
 
-
-class TestDcatUrlFlow:
-    """Tests for the ASK_DCAT_URL state handler."""
-
-    def test_url_stored_goes_to_ask_inclusion(self, mock_config, mock_ai_service):
-        flow = MappingFlow(mock_config, mock_ai_service)
-        flow._state.current_state = FlowState.ASK_DCAT_URL
-        flow._state.generated_rml = "some rml"
-        flow._state.csv_path = "/data/file.csv"
-        flow._state.awaiting_user_input = True
-
-        result = flow._handle_dcat_url("https://example.com/dcat.ttl")
-
-        assert result.dcat_source_url == "https://example.com/dcat.ttl"
-        assert result.current_state == FlowState.ASK_DCAT_INCLUSION
-        assert result.awaiting_user_input is True
-
-    def test_empty_url_skipped_goes_to_ask_inclusion(self, mock_config, mock_ai_service):
-        flow = MappingFlow(mock_config, mock_ai_service)
-        flow._state.current_state = FlowState.ASK_DCAT_URL
-        flow._state.generated_rml = "some rml"
-        flow._state.csv_path = "/data/file.csv"
-        flow._state.awaiting_user_input = True
-
-        result = flow._handle_dcat_url("")
-
-        assert result.dcat_source_url is None
-        assert result.current_state == FlowState.ASK_DCAT_INCLUSION
 
 
 class TestDcatInclusionFlow:
-    """Tests for the ASK_DCAT_INCLUSION state handler."""
+    """Tests for the ASK_CONTEXT_INCLUSION state handler."""
 
     def test_yes_includes_dcat_and_goes_to_preview(self, mock_config, mock_ai_service):
         flow = MappingFlow(mock_config, mock_ai_service)
-        flow._state.current_state = FlowState.ASK_DCAT_INCLUSION
+        flow._state.current_state = FlowState.ASK_CONTEXT_INCLUSION
         flow._state.generated_rml = "some rml"
         flow._state.csv_path = "/data/file.csv"
         flow._state.awaiting_user_input = True
 
-        result = flow._handle_dcat_inclusion("yes")
+        result = flow._handle_context_inclusion("yes")
 
-        assert result.include_dcat_in_pr is True
+        assert result.include_context_in_pr is True
         assert result.current_state == FlowState.PREVIEW
 
     def test_no_excludes_dcat_and_goes_to_preview(self, mock_config, mock_ai_service):
         flow = MappingFlow(mock_config, mock_ai_service)
-        flow._state.current_state = FlowState.ASK_DCAT_INCLUSION
+        flow._state.current_state = FlowState.ASK_CONTEXT_INCLUSION
         flow._state.generated_rml = "some rml"
         flow._state.csv_path = "/data/file.csv"
         flow._state.awaiting_user_input = True
 
-        result = flow._handle_dcat_inclusion("no")
+        result = flow._handle_context_inclusion("no")
 
-        assert result.include_dcat_in_pr is False
+        assert result.include_context_in_pr is False
         assert result.current_state == FlowState.PREVIEW
 
     def test_unrecognised_prompts_again(self, mock_config, mock_ai_service):
         flow = MappingFlow(mock_config, mock_ai_service)
-        flow._state.current_state = FlowState.ASK_DCAT_INCLUSION
+        flow._state.current_state = FlowState.ASK_CONTEXT_INCLUSION
         flow._state.generated_rml = "some rml"
         flow._state.csv_path = "/data/file.csv"
         flow._state.awaiting_user_input = True
 
-        result = flow._handle_dcat_inclusion("maybe")
+        result = flow._handle_context_inclusion("maybe")
 
         assert result.awaiting_user_input is True
-        assert result.current_state == FlowState.ASK_DCAT_INCLUSION
+        assert result.current_state == FlowState.ASK_CONTEXT_INCLUSION
 
 
 class TestContinueWithInputRouting:
@@ -1109,34 +1082,22 @@ class TestContinueWithInputRouting:
         flow._state.csv_path = "/data/file.csv"
         flow._state.generated_rml = "some rml"
         flow._state.awaiting_user_input = True
-        flow._state.dcat_path = None
+        flow._state.context_paths = []
 
         result = flow.continue_with_input("https://example.com/data.csv")
 
         assert result.csv_source_url == "https://example.com/data.csv"
 
-    def test_routes_ask_dcat_url(self, mock_config, mock_ai_service):
-        flow = MappingFlow(mock_config, mock_ai_service)
-        flow._state.current_state = FlowState.ASK_DCAT_URL
-        flow._state.csv_path = "/data/file.csv"
-        flow._state.generated_rml = "some rml"
-        flow._state.awaiting_user_input = True
-
-        result = flow.continue_with_input("https://example.com/dcat.ttl")
-
-        assert result.dcat_source_url == "https://example.com/dcat.ttl"
-        assert result.current_state == FlowState.ASK_DCAT_INCLUSION
-
     def test_routes_ask_dcat_inclusion(self, mock_config, mock_ai_service):
         flow = MappingFlow(mock_config, mock_ai_service)
-        flow._state.current_state = FlowState.ASK_DCAT_INCLUSION
+        flow._state.current_state = FlowState.ASK_CONTEXT_INCLUSION
         flow._state.csv_path = "/data/file.csv"
         flow._state.generated_rml = "some rml"
         flow._state.awaiting_user_input = True
 
         result = flow.continue_with_input("yes")
 
-        assert result.include_dcat_in_pr is True
+        assert result.include_context_in_pr is True
         assert result.current_state == FlowState.PREVIEW
 
 
@@ -1155,23 +1116,21 @@ class TestPrDescriptionUsesUrls:
     def test_dcat_url_in_description(self):
         state = GraphState(
             csv_path="/data/file.csv",
-            dcat_path="/data/dcat.ttl",
-            dcat_source_url="https://example.com/dcat.ttl",
+            context_paths=["/data/dcat.ttl"],
         )
         result = _build_pr_description(state, "test-mapping")
-        assert "https://example.com/dcat.ttl" in result
+        assert "`dcat.ttl`" in result
         assert "`/data/dcat.ttl`" not in result
 
     def test_not_provided_when_no_url(self):
         state = GraphState(
             csv_path="/data/file.csv",
-            dcat_path="/data/dcat.ttl",
+            context_paths=["/data/dcat.ttl"],
         )
         result = _build_pr_description(state, "test-mapping")
         # Local paths should NOT appear — only public URLs are shown
         assert "`/data/file.csv`" not in result
         assert "`/data/dcat.ttl`" not in result
-        assert "(not provided)" in result
 
 
 class TestIsAwaitingHelpers:
@@ -1185,18 +1144,10 @@ class TestIsAwaitingHelpers:
         flow._state.awaiting_user_input = True
         assert flow.is_awaiting_csv_url() is True
 
-    def test_is_awaiting_dcat_url(self, mock_config, mock_ai_service):
+    def test_is_awaiting_context_inclusion(self, mock_config, mock_ai_service):
         flow = MappingFlow(mock_config, mock_ai_service)
-        assert flow.is_awaiting_dcat_url() is False
+        assert flow.is_awaiting_context_inclusion() is False
 
-        flow._state.current_state = FlowState.ASK_DCAT_URL
+        flow._state.current_state = FlowState.ASK_CONTEXT_INCLUSION
         flow._state.awaiting_user_input = True
-        assert flow.is_awaiting_dcat_url() is True
-
-    def test_is_awaiting_dcat_inclusion(self, mock_config, mock_ai_service):
-        flow = MappingFlow(mock_config, mock_ai_service)
-        assert flow.is_awaiting_dcat_inclusion() is False
-
-        flow._state.current_state = FlowState.ASK_DCAT_INCLUSION
-        flow._state.awaiting_user_input = True
-        assert flow.is_awaiting_dcat_inclusion() is True
+        assert flow.is_awaiting_context_inclusion() is True

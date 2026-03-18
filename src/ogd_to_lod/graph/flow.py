@@ -171,7 +171,7 @@ class MappingFlow:
 
     def _wrap_analyze(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         """Wrapper for analyze node."""
-        self._state = analyze_node(self._state, self._config)
+        self._state = analyze_node(self._state, self._config, self._ai_service)
         return self._state.to_dict()
 
     def _wrap_propose(self, state_dict: dict[str, Any]) -> dict[str, Any]:
@@ -346,14 +346,15 @@ class MappingFlow:
     def start(
         self,
         csv_path: str,
-        dcat_path: str | None = None,
+        context_paths: list[str] | None = None,
         base_uri: str | None = None,
+        output_folder: str | None = None,
     ) -> GraphState:
         """Start the mapping flow.
 
         Args:
             csv_path: Path to the CSV file.
-            dcat_path: Optional path to DCAT metadata file.
+            context_paths: Optional list of context files (any format).
             base_uri: Optional base URI for generated resources.
 
         Returns:
@@ -364,8 +365,9 @@ class MappingFlow:
         # Set initial state
         self._state = GraphState(
             csv_path=csv_path,
-            dcat_path=dcat_path,
+            context_paths=context_paths or [],
             base_uri=base_uri,
+            output_folder=output_folder,
         )
 
         # Run until we need user input
@@ -391,15 +393,9 @@ class MappingFlow:
         if self._state.current_state == FlowState.CONFIRM_NAME:
             return self._handle_name_confirmation(user_input)
 
-        # Handle source URL and DCAT inclusion states
+        # Handle source URL and context inclusion states
         if self._state.current_state == FlowState.ASK_CSV_URL:
             return self._handle_csv_url(user_input)
-
-        if self._state.current_state == FlowState.ASK_DCAT_URL:
-            return self._handle_dcat_url(user_input)
-
-        if self._state.current_state == FlowState.ASK_DCAT_INCLUSION:
-            return self._handle_dcat_inclusion(user_input)
 
         # Handle PR confirmation if in PREVIEW state
         if self._state.current_state == FlowState.PREVIEW:
@@ -579,75 +575,7 @@ class MappingFlow:
         else:
             logger.info("User skipped CSV source URL")
 
-        # If DCAT was provided, ask for its URL too
-        if self._state.dcat_path:
-            self._state.current_state = FlowState.ASK_DCAT_URL
-            self._state.awaiting_user_input = True
-            self._state.add_message(
-                "assistant",
-                "Enter the public URL for the DCAT metadata (or press Enter to skip):",
-            )
-        else:
-            # No DCAT — go straight to preview
-            self._state = preview_node(self._state, self._ai_service)
-
-        return self._state
-
-    def _handle_dcat_url(self, user_input: str) -> GraphState:
-        """Handle DCAT source URL input.
-
-        Empty input skips; non-empty stores the URL. Always transitions to
-        ASK_DCAT_INCLUSION.
-
-        Args:
-            user_input: User's response.
-
-        Returns:
-            Updated state.
-        """
-        self._state.add_message("user", user_input)
-        url = user_input.strip()
-        if url:
-            self._state.dcat_source_url = url
-            logger.info("User provided DCAT source URL: %s", url)
-        else:
-            logger.info("User skipped DCAT source URL")
-
-        # Ask whether to include the DCAT file in the PR
-        self._state.current_state = FlowState.ASK_DCAT_INCLUSION
-        self._state.awaiting_user_input = True
-        self._state.add_message(
-            "assistant",
-            "Include the DCAT metadata file in the PR? (yes/no):",
-        )
-
-        return self._state
-
-    def _handle_dcat_inclusion(self, user_input: str) -> GraphState:
-        """Handle DCAT inclusion confirmation (yes/no).
-
-        Args:
-            user_input: User's response.
-
-        Returns:
-            Updated state.
-        """
-        self._state.add_message("user", user_input)
-        answer = user_input.lower().strip()
-
-        if answer in ("yes", "y"):
-            self._state.include_dcat_in_pr = True
-            logger.info("User chose to include DCAT metadata in PR")
-        elif answer in ("no", "n"):
-            self._state.include_dcat_in_pr = False
-            logger.info("User chose not to include DCAT metadata in PR")
-        else:
-            # Unrecognised — prompt again
-            self._state.awaiting_user_input = True
-            logger.info("Unrecognised DCAT inclusion input, prompting again")
-            return self._state
-
-        # Build and show PR preview
+        # Go straight to preview
         self._state = preview_node(self._state, self._ai_service)
 
         return self._state
@@ -720,20 +648,6 @@ class MappingFlow:
         """Check if flow is waiting for CSV source URL input."""
         return (
             self._state.current_state == FlowState.ASK_CSV_URL
-            and self._state.awaiting_user_input
-        )
-
-    def is_awaiting_dcat_url(self) -> bool:
-        """Check if flow is waiting for DCAT source URL input."""
-        return (
-            self._state.current_state == FlowState.ASK_DCAT_URL
-            and self._state.awaiting_user_input
-        )
-
-    def is_awaiting_dcat_inclusion(self) -> bool:
-        """Check if flow is waiting for DCAT inclusion confirmation."""
-        return (
-            self._state.current_state == FlowState.ASK_DCAT_INCLUSION
             and self._state.awaiting_user_input
         )
 

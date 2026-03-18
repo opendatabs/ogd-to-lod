@@ -87,9 +87,24 @@ def main() -> int:
         help="Path to the CSV file to map",
     )
     parser.add_argument(
-        "dcat_path",
-        nargs="?",
-        help="Path to the DCAT metadata file (JSON-LD or Turtle)",
+        "--context",
+        "-d",
+        nargs="*",
+        metavar="FILE",
+        dest="context_paths",
+        help=(
+            "One or more context files describing the dataset "
+            "(DCAT, freetext, Markdown, JSON, etc.)"
+        ),
+    )
+    parser.add_argument(
+        "--output-folder",
+        "-o",
+        required=True,
+        help=(
+            "Folder name within the mappings parent directory where the CSV "
+            "and YARRRML files will be pushed (required)"
+        ),
     )
     args = parser.parse_args()
 
@@ -107,13 +122,14 @@ def main() -> int:
     print(f"Configuration loaded from: {args.config}")
 
     if not args.csv_path:
-        print("\nUsage: ogd-to-lod <csv_path> [dcat_path]")
+        print("\nUsage: ogd-to-lod <csv_path> [--context FILE ...]")
         print("Run 'ogd-to-lod --help' for more information.")
         return 0
 
     print(f"\nCSV file: {args.csv_path}")
-    if args.dcat_path:
-        print(f"DCAT file: {args.dcat_path}")
+    if args.context_paths:
+        for cp in args.context_paths:
+            print(f"Context file: {cp}")
 
     # Start the mapping flow
     try:
@@ -125,8 +141,9 @@ def main() -> int:
 
         state = flow.start(
             csv_path=args.csv_path,
-            dcat_path=args.dcat_path,
+            context_paths=args.context_paths or [],
             base_uri=args.base_uri,
+            output_folder=args.output_folder,
         )
     except Exception as e:
         logger.exception("Failed to start mapping flow")
@@ -159,10 +176,6 @@ def main() -> int:
             prompt = f"Dataset name ['{name}']: "
         elif flow.is_awaiting_csv_url():
             prompt = "Public CSV source URL (Enter to skip): "
-        elif flow.is_awaiting_dcat_url():
-            prompt = "Public DCAT metadata URL (Enter to skip): "
-        elif flow.is_awaiting_dcat_inclusion():
-            prompt = "Include DCAT metadata file in PR? (yes/no): "
         elif flow.is_awaiting_pr_confirmation():
             prompt = "Push to GitHub and create PR? (yes/no): "
         else:
@@ -182,7 +195,6 @@ def main() -> int:
         allows_empty = (
             flow.is_awaiting_name_confirmation()
             or flow.is_awaiting_csv_url()
-            or flow.is_awaiting_dcat_url()
         )
         if not user_input and not allows_empty:
             continue

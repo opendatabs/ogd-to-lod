@@ -16,8 +16,6 @@ class FlowState(Enum):
     VALIDATE = "validate"
     CONFIRM_NAME = "confirm_name"
     ASK_CSV_URL = "ask_csv_url"
-    ASK_DCAT_URL = "ask_dcat_url"
-    ASK_DCAT_INCLUSION = "ask_dcat_inclusion"
     PREVIEW = "preview"
     CREATE_PR = "create_pr"
     END = "end"
@@ -43,6 +41,10 @@ class DimensionProposal:
     dimension_type: str  # temporal, spatial, categorical
     granularity: str | None = None
     hierarchy: str | None = None
+    datatype: str | None = None  # e.g. xsd:dateTime, xsd:date
+    source: str | None = None  # "csv" (default) or "context"
+    static_value: str | None = None  # context field name when source is "context"
+    context_label: str | None = None  # context field providing label/definition
 
 
 @dataclass
@@ -52,6 +54,7 @@ class MeasureProposal:
     column: str
     unit: str | None = None
     aggregation: str | None = None
+    context_label: str | None = None  # context field providing label/definition
 
 
 @dataclass
@@ -60,6 +63,7 @@ class MappingProposal:
 
     dimensions: list[DimensionProposal] = field(default_factory=list)
     measures: list[MeasureProposal] = field(default_factory=list)
+    skipped_columns: list[str] = field(default_factory=list)
     status: str = "pending"  # pending, approved, refining
 
     def to_dict(self) -> dict[str, Any]:
@@ -71,6 +75,10 @@ class MappingProposal:
                     "type": d.dimension_type,
                     "granularity": d.granularity,
                     "hierarchy": d.hierarchy,
+                    "datatype": d.datatype,
+                    "source": d.source,
+                    "static_value": d.static_value,
+                    "context_label": d.context_label,
                 }
                 for d in self.dimensions
             ],
@@ -79,9 +87,11 @@ class MappingProposal:
                     "column": m.column,
                     "unit": m.unit,
                     "aggregation": m.aggregation,
+                    "context_label": m.context_label,
                 }
                 for m in self.measures
             ],
+            "skipped_columns": self.skipped_columns,
             "status": self.status,
         }
 
@@ -98,12 +108,13 @@ class GraphState:
 
     # Input paths
     csv_path: str | None = None
-    dcat_path: str | None = None
+    context_paths: list[str] = field(default_factory=list)
     base_uri: str | None = None
+    output_folder: str | None = None
 
     # Parsed data (populated in ANALYZE state)
     csv_schema: dict[str, Any] | None = None
-    dcat_metadata: dict[str, Any] | None = None
+    dataset_context: dict[str, Any] | None = None
     parsed_summary: str | None = None
 
     # Mapping proposal (populated in PROPOSE state)
@@ -127,14 +138,10 @@ class GraphState:
     # Mapping name (populated in CONFIRM_NAME state, user-editable)
     mapping_name: str | None = None
 
-    # Source URLs (populated in ASK_CSV_URL / ASK_DCAT_URL states)
+    # Source URL (populated in ASK_CSV_URL state)
     csv_source_url: str | None = None
-    dcat_source_url: str | None = None
 
-    # DCAT inclusion in PR (populated in ASK_DCAT_INCLUSION state)
-    include_dcat_in_pr: bool = False
-    dcat_raw_content: str | None = None
-    dcat_source_format: str | None = None
+    context_raw_files: list[dict] = field(default_factory=list)  # all context files
 
     # PR description (populated in PREVIEW state)
     pr_description: str | None = None
@@ -165,10 +172,11 @@ class GraphState:
         return {
             "current_state": self.current_state.value,
             "csv_path": self.csv_path,
-            "dcat_path": self.dcat_path,
+            "context_paths": self.context_paths,
             "base_uri": self.base_uri,
+            "output_folder": self.output_folder,
             "csv_schema": self.csv_schema,
-            "dcat_metadata": self.dcat_metadata,
+            "dataset_context": self.dataset_context,
             "parsed_summary": self.parsed_summary,
             "mapping_proposal": self.mapping_proposal.to_dict() if self.mapping_proposal else None,
             "proposal_text": self.proposal_text,
@@ -180,10 +188,7 @@ class GraphState:
             "mapping_decisions": self.mapping_decisions,
             "mapping_name": self.mapping_name,
             "csv_source_url": self.csv_source_url,
-            "dcat_source_url": self.dcat_source_url,
-            "include_dcat_in_pr": self.include_dcat_in_pr,
-            "dcat_raw_content": self.dcat_raw_content,
-            "dcat_source_format": self.dcat_source_format,
+            "context_raw_files": self.context_raw_files,
             "pr_description": self.pr_description,
             "validation_error": self.validation_error,
             "validation_retry_count": self.validation_retry_count,

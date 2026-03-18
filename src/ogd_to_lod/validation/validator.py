@@ -173,8 +173,12 @@ class RMLValidator:
             yarrrml_file = Path(tmpdir.name) / "mapping.yarrrml.yaml"
             output_file = Path(tmpdir.name) / "output.ttl"
 
-            # Replace the CSV source placeholder with the sample filename
-            yarrrml_with_source = self._replace_csv_placeholder(rml_content, sample_filename)
+            # Replace the CSV source placeholder with the container-absolute path.
+            # The temp dir is mounted at /data inside Docker, so RMLMapper (which
+            # resolves paths relative to its working directory "/") must receive the
+            # full /data/sample.csv path — not just "sample.csv".
+            container_csv_path = f"/data/{sample_filename}"
+            yarrrml_with_source = self._replace_csv_placeholder(rml_content, container_csv_path)
             yarrrml_file.write_text(yarrrml_with_source)
 
             try:
@@ -456,7 +460,8 @@ class RMLValidator:
         if "prefixes" not in doc:
             warnings.append("No 'prefixes' block found in YARRRML")
 
-        # Check each mapping entry for required keys
+        # Check each mapping entry for required keys and common mistakes
+        named_sources = set(doc.get("sources", {}).keys())
         mappings = doc.get("mappings", {})
         if isinstance(mappings, dict):
             for name, mapping in mappings.items():
@@ -464,6 +469,19 @@ class RMLValidator:
                     continue
                 if "sources" not in mapping:
                     warnings.append(f"Mapping '{name}' has no 'sources'")
+                else:
+                    # Detect [sourceName~source] inline shorthand used instead of named ref
+                    for src in mapping.get("sources", []):
+                        if isinstance(src, list) and src and isinstance(src[0], str) and "~source" in src[0]:
+                            src_name = src[0].replace("~source", "")
+                            return ValidationResult(
+                                valid=False,
+                                error_message=(
+                                    f"Mapping '{name}' uses inline source shorthand "
+                                    f"'[{src[0]}]' instead of the named source reference. "
+                                    f"Replace '- [{src[0]}]' with '- {src_name}'."
+                                ),
+                            )
                 if "s" not in mapping:
                     warnings.append(f"Mapping '{name}' has no subject ('s')")
                 if "po" not in mapping:
@@ -493,6 +511,8 @@ class RMLValidator:
             "docker",
             "run",
             "--rm",
+            "--platform",
+            "linux/amd64",
             "-v",
             f"{tmpdir_name}:/data",
             self._yarrrml_parser_image,
@@ -550,6 +570,8 @@ class RMLValidator:
             "docker",
             "run",
             "--rm",
+            "--platform",
+            "linux/amd64",
             "-v",
             f"{tmpdir_name}:/data",
             self._docker_image,

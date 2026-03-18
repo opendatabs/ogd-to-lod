@@ -40,7 +40,7 @@ sources:
     referenceFormulation: csv
 ```
 
-Reference it in every mapping entry as `[csvSource~source]`.
+Reference it in every mapping entry as `- csvSource` (the source name, not an inline shorthand).
 
 ## Subject Template
 
@@ -76,7 +76,7 @@ typed dimension value resources. All mapping entries live under the top-level \
 mappings:
   observations:
     sources:
-      - [csvSource~source]
+      - csvSource
     s: ex-obs:$(YearCol)_$(RegionCodeCol)
     po:
       - [a, cube:Observation]
@@ -84,7 +84,7 @@ mappings:
       - [ex-property:RAUM, ex-code:$(RegionCodeCol)~iri]
   regionCodes:
     sources:
-      - [csvSource~source]
+      - csvSource
     s: ex-code:$(RegionCodeCol)
     po:
       - [a, schema:DefinedTerm]
@@ -97,6 +97,9 @@ mappings:
 ## CSV Schema
 {csv_schema}
 
+## Column Descriptions (from dataset context)
+{column_descriptions}
+
 ## RDF Data Cube Conventions (CRITICAL)
 
 Each CSV row represents ONE cube:Observation. Each column is either:
@@ -108,10 +111,44 @@ Each CSV row represents ONE cube:Observation. Each column is either:
 **Properties** (dimensions and measures) — all use `ex-property:` prefix:
 - Time dimensions: ALWAYS use `ex-property:ZEIT`
 - Spatial dimensions: ALWAYS use `ex-property:RAUM`
-- Other dimensions/measures: `ex-property:` + the column name
+- Other dimensions/measures: `ex-property:` + a **sanitized** form of the column name
 
 **Code values** (key dimension instances) — all use `ex-code:` prefix:
 - Construct from CSV column values: `ex-code:$(columnValue)`
+
+### IRI-Safe Property Names (CRITICAL)
+
+Property URIs must be valid IRIs. Column names often contain characters that are
+**not allowed in IRIs** and must be sanitized:
+- Replace spaces with `_`
+- Replace or remove brackets `[`, `]`, `(`, `)`
+- Replace `.` with `_` when used as separator (e.g. `PM2.5` → `PM2_5`)
+- Keep alphanumeric characters and `_`, `-`
+
+Examples:
+- Column `O3 [ug/m3]` → property `ex-property:O3_ug_m3`
+- Column `NO2 [ug/m3]` → property `ex-property:NO2_ug_m3`
+- Column `PM2.5 [ug/m3]` → property `ex-property:PM2_5_ug_m3`
+- Column `anzahl personen` → property `ex-property:anzahl_personen`
+
+The **column reference** `$(col)` in the mapping still uses the **exact original column name**
+from the CSV header (spaces, brackets and all).
+
+### Quoting in YAML Flow Sequences (CRITICAL)
+
+The `po:` shorthand uses YAML flow sequences: `- [predicate, object, datatype]`.
+Any element that contains spaces, brackets `[]`, colons `:`, or other special characters
+**must be quoted**:
+
+```yaml
+# WRONG — breaks YAML parser:
+- [ex-property:PM10_ug_m3, $(PM10 [ug/m3]), xsd:decimal]
+
+# CORRECT — quote elements with special characters:
+- ["ex-property:PM10_ug_m3", "$(PM10 [ug/m3])", xsd:decimal]
+```
+
+When in doubt, quote all three elements of every `po:` shorthand entry.
 
 ### Key Dimensions vs Measures
 
@@ -129,6 +166,24 @@ Each CSV row represents ONE cube:Observation. Each column is either:
 - Dates: `xsd:date` (YYYY-MM-DD)
 - Years: `xsd:gYear` (YYYY)
 - Date-times: `xsd:dateTime`
+
+### Template Literals (Constructing Values from Partial Column Data)
+
+When a column only contains part of a value (e.g., a year `1998`) but the mapping requires
+a complete typed literal (e.g., the year-end date `1998-12-31`), use a **template literal**:
+combine the column reference with fixed text inside the shorthand array.
+
+```yaml
+# Column 'jahr' contains "1998", map to year-end date "1998-12-31"
+- [ex-property:ZEIT, "$(jahr)-12-31", xsd:date]
+```
+
+A template literal is triggered when the object string mixes `$(col)` references with
+literal text. With a datatype in position [2], yarrrml-parser emits `rr:template` +
+`rr:termType rr:Literal`, producing a typed literal — not an IRI.
+
+Use this pattern whenever a dimension value requires padding, a fixed suffix/prefix, or
+unit embedding (e.g., `"$(year)-01-01"`, `"$(code)-CH"`).
 
 ## Output Format
 Provide ONLY the YARRRML in a fenced `yaml` code block. \
@@ -149,6 +204,18 @@ The YARRRML mapping you generated has an error. Please fix it.
 - Fix ONLY the issue described above.
 - Return the complete corrected YARRRML in a fenced ```yaml``` code block.
 - Do NOT change anything else about the mapping.
+
+## Common causes of YAML syntax errors in po: entries
+If the error mentions "unexpected characters" or a flow sequence, the likely cause is
+unquoted special characters inside a `- [pred, obj, type]` shorthand. Fix by quoting
+every element that contains spaces, brackets, colons, or dots:
+```yaml
+# Wrong:
+- [ex-property:PM10_ug_m3, $(PM10 [ug/m3]), xsd:decimal]
+# Correct:
+- ["ex-property:PM10_ug_m3", "$(PM10 [ug/m3])", xsd:decimal]
+```
+Also ensure property URIs are IRI-safe (replace spaces/brackets with `_`).
 """
 
 RML_VALIDATION_PROMPT = """\
