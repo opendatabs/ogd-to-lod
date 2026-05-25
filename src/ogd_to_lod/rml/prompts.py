@@ -91,6 +91,35 @@ mappings:
       - [schema:name, $(RegionCol)]
 ```
 
+## ObservationSet Link (REQUIRED)
+
+The static metadata file declares `<{base_uri}observation-set>` as a \
+`cube:ObservationSet`. The YARRRML must add a per-row mapping that links \
+this set to each generated observation via `cube:observation` (the \
+ObservationSet → Observation direction is the canonical cube.link link; \
+there is no `cube:dataSet` predicate — do **not** emit one from \
+observations). Use the **same subject template** as the `observations` \
+mapping for the object position so the IRIs match exactly:
+
+```yaml
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, ex-obs:$(YearCol)_$(RegionCodeCol)~iri]
+```
+
+Notes:
+- The subject is a **CURIE**: `ex:` is declared in the `prefixes:` block \
+above as `{base_uri}`, so `ex:observation-set` expands to \
+`<{base_uri}observation-set>`. CURIE is the **only** working form for a \
+constant IRI subject — angle-bracket forms (`s: <iri>` or \
+`s: "<iri>"`) are not valid YARRRML and produce URL-encoded broken IRIs \
+in the output (see "Constant IRI subjects" rule below).
+- The `~iri` suffix on the object is mandatory so RMLMapper emits the \
+observation as a resource, not a literal.
+
 ## Approved Mapping Proposal
 {mapping_proposal}
 
@@ -168,6 +197,45 @@ When in doubt, quote all three elements of every `po:` shorthand entry.
 - ["ex-property:RAUM", "ex-code:$(RegionCol)~iri"]
 ```
 
+**CRITICAL — Constant IRIs in object position**: Bare angle-bracket IRIs \
+(`<https://…>`) are only valid as the subject (`s:`). In `po:` shorthand \
+they are parsed as plain strings and RMLMapper URL-encodes the `<` and \
+`>` into the IRI path, producing broken values like \
+`<%3Chttps://…%3E>`. Always use a prefixed CURIE + `~iri` (or a full IRI \
+string + `~iri`, no angle brackets):
+
+```yaml
+# WRONG — angle-bracket IRI in object position:
+- [cube:observation, <https://ld.domain.ch/statistics/observation/2024_CH>]
+
+# CORRECT — prefixed CURIE + ~iri (the prefix is declared in prefixes:):
+- [cube:observation, "ex-obs:2024_CH~iri"]
+
+# Also correct — full IRI as a string + ~iri (no angle brackets):
+- [cube:observation, "https://ld.domain.ch/statistics/observation/2024_CH~iri"]
+```
+
+**CRITICAL — Constant IRI subjects MUST be CURIEs**: Angle-bracket IRIs \
+(`<https://…>`) on `s:` lines are **not valid YARRRML** — neither the \
+bare nor the quoted form. yarrrml-parser treats the whole `<…>` string \
+as a plain template and RMLMapper URL-encodes the `<` and `>` into the \
+IRI path, producing broken IRIs like `<%3Chttps://…%3E>`. Use a CURIE \
+that resolves via a declared prefix instead.
+
+```yaml
+# WRONG — bare angle-bracket IRI on an s: line:
+  observationSetLink:
+    s: <https://ld.domain.ch/statistics/observation-set>
+
+# WRONG — quoted angle-bracket IRI on an s: line:
+  observationSetLink:
+    s: "<https://ld.domain.ch/statistics/observation-set>"
+
+# CORRECT — CURIE using a declared prefix (ex: is in prefixes:):
+  observationSetLink:
+    s: ex:observation-set
+```
+
 ### Key Dimensions vs Measures
 
 **Key dimensions** (region, year, category, etc.):
@@ -242,6 +310,35 @@ If the error mentions a flow sequence near a `~iri` suffix, the cause is `~iri` 
 - ["ex-property:RAUM", "ex-code:$(col)"~iri]
 # Correct — ~iri inside the quotes:
 - ["ex-property:RAUM", "ex-code:$(col)~iri"]
+```
+
+If the resulting RDF contains URL-encoded angle brackets in an IRI
+(e.g. `<%3Chttps://…%3E>`), the cause is an angle-bracket IRI used as a
+**constant IRI** in YARRRML. yarrrml-parser does not recognise the
+angle-bracket form in either `s:` or `po:` shorthand positions and
+treats the whole `<…>` string as a template, so RMLMapper URL-encodes
+the brackets. Use a CURIE (declared in `prefixes:`) instead.
+
+In **object** position, append `~iri` to the CURIE:
+```yaml
+# Wrong — bare angle-bracket IRI in object position:
+- [cube:observation, <https://ld.domain.ch/statistics/observation/2024_CH>]
+# Correct — prefixed CURIE + ~iri:
+- [cube:observation, "ex-obs:2024_CH~iri"]
+```
+
+In **subject** position, use a bare CURIE — no angle brackets, no quotes,
+no `~iri` suffix:
+```yaml
+# Wrong — bare angle-bracket IRI on s: line:
+  observationSetLink:
+    s: <https://ld.domain.ch/statistics/observation-set>
+# Wrong — quoted angle-bracket IRI on s: line:
+  observationSetLink:
+    s: "<https://ld.domain.ch/statistics/observation-set>"
+# Correct — CURIE using a declared prefix:
+  observationSetLink:
+    s: ex:observation-set
 ```
 """
 

@@ -1,15 +1,18 @@
 """Node functions for the LangGraph conversation flow."""
 
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from ogd_to_lod._slug import slugify
 from ogd_to_lod.ai import AIService
 from ogd_to_lod.config import Config
 from ogd_to_lod.github import GitHubService, PRCreationError
 from ogd_to_lod.lookup import ReuseContext, SPARQLLookup
+from ogd_to_lod.metadata import generate_metadata
 from ogd_to_lod.github.pr_template import (
     build_csv_preview_section,
     build_mapping_structure_section,
@@ -440,6 +443,7 @@ def generate_node(state: GraphState, ai_service: AIService) -> GraphState:
             base_uri=state.base_uri,
             dataset_context=state.dataset_context,
             reuse_context=state.reuse_context,
+            output_folder=state.output_folder,
         )
 
         state.generated_rml = rml_content
@@ -449,6 +453,21 @@ def generate_node(state: GraphState, ai_service: AIService) -> GraphState:
         )
 
         logger.info(f"Successfully generated YARRRML ({len(rml_content)} characters)")
+
+        # Generate companion static metadata Turtle (cube:Cube + ObservationSet
+        # + per-property schema:name/description)
+        state.generated_metadata = generate_metadata(
+            state.base_uri,
+            state.dataset_context,
+            output_folder=state.output_folder,
+            mapping_proposal=state.mapping_proposal.to_dict()
+            if state.mapping_proposal
+            else None,
+        )
+        logger.info(
+            "Generated metadata.ttl (%d characters)",
+            len(state.generated_metadata),
+        )
 
         # Transition to PREVIEW state
         state.current_state = FlowState.PREVIEW
@@ -463,7 +482,7 @@ def generate_node(state: GraphState, ai_service: AIService) -> GraphState:
 
 
 def suggest_mapping_name(state: GraphState) -> str:
-    """Derive a mapping name from DCAT title (preferred) or CSV filename (fallback).
+    """Derive a mapping name from --output-folder, DCAT title, or CSV filename.
 
     Args:
         state: Current graph state.
@@ -471,8 +490,11 @@ def suggest_mapping_name(state: GraphState) -> str:
     Returns:
         A slug-style mapping name suitable for branch and file names.
     """
-    # Prefer dataset context title
-    if state.dataset_context and state.dataset_context.get("title"):
+    # Prefer the CLI --output-folder (deliberate user-supplied identifier)
+    if state.output_folder:
+        raw = state.output_folder
+    # Otherwise fall back to dataset context title
+    elif state.dataset_context and state.dataset_context.get("title"):
         raw = state.dataset_context["title"]
     elif state.csv_path:
         csv_filename = state.csv_path.split("/")[-1].split("\\")[-1]
@@ -569,10 +591,14 @@ def preview_node(state: GraphState, ai_service: AIService | None = None) -> Grap
 
     state.current_state = FlowState.PREVIEW
     state.awaiting_user_input = True
+    if state.local_output:
+        followup = "Save results locally? (yes/no)"
+    else:
+        followup = "Push to GitHub? (yes/no)"
     state.add_message(
         "assistant",
         f"Here is the PR that will be created:\n\n{state.pr_description}\n\n"
-        "Push to GitHub? (yes/no)"
+        f"{followup}"
     )
 
     logger.info("Awaiting push confirmation")
@@ -619,6 +645,32 @@ def create_pr_node(state: GraphState, config: Config) -> GraphState:
     csv_filename = csv_path_obj.name
     csv_content = csv_path_obj.read_text(encoding="utf-8")
 
+    # Local-output mode: write artifacts to disk instead of opening a PR
+    if state.local_output:
+        try:
+            target_dir = _write_local_output(
+                mapping_name=mapping_name,
+                output_folder=output_folder,
+                rml_content=state.generated_rml,
+                pr_description=pr_description,
+                csv_filename=csv_filename,
+                csv_content=csv_content,
+                metadata_content=state.generated_metadata,
+            )
+            state.local_output_path = str(target_dir)
+            state.add_message(
+                "assistant",
+                f"Results saved locally to: {target_dir}",
+            )
+            logger.info(f"Local output written to: {target_dir}")
+            state.current_state = FlowState.END
+            logger.info("Flow completed successfully")
+        except OSError as e:
+            logger.error(f"Local output failed: {e}")
+            state.error_message = f"Failed to write local output: {e}"
+            state.current_state = FlowState.ERROR
+        return state
+
     # Create the PR
     try:
         github_service = GitHubService(config.github)
@@ -629,6 +681,7 @@ def create_pr_node(state: GraphState, config: Config) -> GraphState:
             output_folder=output_folder,
             csv_filename=csv_filename,
             csv_content=csv_content,
+            metadata_content=state.generated_metadata,
             mappings_folder=config.github.mappings_folder,
         )
 
@@ -652,6 +705,46 @@ def create_pr_node(state: GraphState, config: Config) -> GraphState:
         state.current_state = FlowState.ERROR
 
     return state
+
+
+def _write_local_output(
+    mapping_name: str,
+    output_folder: str,
+    rml_content: str,
+    pr_description: str,
+    csv_filename: str,
+    csv_content: str,
+    metadata_content: str | None,
+) -> Path:
+    """Write mapping artifacts to a timestamped folder under ``results/``.
+
+    The folder is created at the project root (current working directory) and
+    contains the YARRRML mapping, the source CSV (always written as
+    ``data.csv`` so the YARRRML's ``{CSV_SOURCE}`` placeholder has a
+    predictable target), the PR description as Markdown — with the original
+    source filename recorded in its header — and optionally the static
+    metadata Turtle.
+
+    Returns:
+        The path of the timestamped folder that was created.
+    """
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    folder_slug = slugify(output_folder)
+    target_dir = Path.cwd() / "results" / f"{timestamp}-{folder_slug}"
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    (target_dir / "mapping.yarrrml.yaml").write_text(rml_content, encoding="utf-8")
+    (target_dir / "data.csv").write_text(csv_content, encoding="utf-8")
+    (target_dir / "PR.md").write_text(
+        f"# {mapping_name}\n\n"
+        f"_Source CSV filename: `{csv_filename}` (stored locally as `data.csv`)_\n\n"
+        f"{pr_description}\n",
+        encoding="utf-8",
+    )
+    if metadata_content:
+        (target_dir / "metadata.ttl").write_text(metadata_content, encoding="utf-8")
+
+    return target_dir
 
 
 def _serialize_dataset_context(context: Any) -> dict[str, Any]:

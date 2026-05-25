@@ -17,6 +17,7 @@ from ogd_to_lod.graph.nodes import (
     analyze_node,
     propose_node,
     confirm_name_node,
+    generate_node,
     preview_node,
     create_pr_node,
     handle_user_input,
@@ -29,6 +30,7 @@ from ogd_to_lod.graph.nodes import (
     _fix_common_yaml_issues,
     _parse_yaml_line_by_line,
     _extract_proposal_from_text,
+    _write_local_output,
 )
 from ogd_to_lod.graph.flow import MappingFlow
 
@@ -748,6 +750,56 @@ class TestSuggestMappingName:
         assert all(c.isalnum() or c == "-" for c in name)
         assert name  # non-empty
 
+    def test_output_folder_preferred_over_title(self):
+        """The CLI --output-folder wins over the DCAT title."""
+        state = GraphState(
+            output_folder="weather-binningen-hourly",
+            csv_path="/data/file.csv",
+            dataset_context={"title": "LOD mit KI Test: Luftqualität Station Basel-Binningen"},
+        )
+        assert suggest_mapping_name(state) == "weather-binningen-hourly"
+
+    def test_output_folder_is_slugified(self):
+        state = GraphState(output_folder="Weather Binningen 2024")
+        assert suggest_mapping_name(state) == "weather-binningen-2024"
+
+
+class TestWriteLocalOutput:
+    """Tests for _write_local_output folder naming."""
+
+    def test_folder_name_is_slugified(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        target = _write_local_output(
+            mapping_name="Whatever",
+            output_folder="Weather Binningen 2024",
+            rml_content="mappings: {}\n",
+            pr_description="body",
+            csv_filename="data.csv",
+            csv_content="a,b\n1,2\n",
+            metadata_content=None,
+        )
+        assert target.name.endswith("-weather-binningen-2024")
+        assert (target / "mapping.yarrrml.yaml").exists()
+        assert (target / "data.csv").exists()
+        assert (target / "PR.md").exists()
+
+    def test_csv_always_written_as_data_csv(self, tmp_path, monkeypatch):
+        """Source filenames other than data.csv get normalised on disk."""
+        monkeypatch.chdir(tmp_path)
+        target = _write_local_output(
+            mapping_name="x",
+            output_folder="x",
+            rml_content="mappings: {}\n",
+            pr_description="body",
+            csv_filename="weird name.original.csv",
+            csv_content="a,b\n1,2\n",
+            metadata_content=None,
+        )
+        assert (target / "data.csv").exists()
+        assert not (target / "weird name.original.csv").exists()
+        # Original filename survives in PR.md so the source is not lost.
+        assert "weird name.original.csv" in (target / "PR.md").read_text()
+
 
 class TestConfirmNameNode:
     """Tests for confirm_name_node setting mapping_name."""
@@ -1108,4 +1160,29 @@ class TestIsAwaitingHelpers:
         flow._state.current_state = FlowState.ASK_CSV_URL
         flow._state.awaiting_user_input = True
         assert flow.is_awaiting_csv_url() is True
+
+
+class TestGenerateNodeProducesMetadata:
+    """generate_node populates state.generated_metadata for issue #41."""
+
+    @patch("ogd_to_lod.graph.nodes.RMLGenerator")
+    def test_metadata_is_generated(self, mock_gen_cls, mock_ai_service):
+        mock_gen_cls.return_value.generate.return_value = "mappings: {}"
+
+        proposal = MappingProposal(status="approved")
+        state = GraphState(
+            csv_path="/data/file.csv",
+            csv_schema={"columns": [], "source": "test", "total_rows": 1},
+            base_uri="https://example.org/datasets/foo/",
+            mapping_proposal=proposal,
+            dataset_context={"title": "Population", "description": "Yearly counts"},
+        )
+
+        result = generate_node(state, mock_ai_service)
+
+        assert result.generated_rml == "mappings: {}"
+        assert result.generated_metadata is not None
+        assert "<https://example.org/datasets/foo/> a cube:Cube" in result.generated_metadata
+        assert 'schema:name "Population"' in result.generated_metadata
+        assert "cube:observationSet <https://example.org/datasets/foo/observation-set>" in result.generated_metadata
 

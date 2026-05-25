@@ -1,7 +1,9 @@
 """RML generation using AI service."""
 
+import re
 from typing import Any
 
+from ogd_to_lod._slug import slugify
 from ogd_to_lod.ai import AIService
 from ogd_to_lod.lookup import ReuseContext
 from ogd_to_lod.logging import get_logger
@@ -12,6 +14,97 @@ logger = get_logger(__name__)
 # Placeholder for CSV source path in generated YARRRML
 # This should be replaced with the actual CSV path at deployment time
 CSV_SOURCE_PLACEHOLDER = "{CSV_SOURCE}"
+
+# Matches a bare <http(s)://…> IRI used as an object inside a po: shorthand
+# flow sequence: `[predicate, <iri>]` or `[predicate, <iri>, …]`.
+# Subject lines like `s: <iri>` are left untouched because they are not
+# inside a `[ … ]` flow sequence.
+_BARE_IRI_OBJECT_RE = re.compile(
+    r"(\[\s*[^,\[\]]+,\s*)<(https?://[^>\s]+)>(\s*[,\]])"
+)
+
+# Matches an angle-bracket IRI used as a subject, in either form:
+#     s: <https://example.org/foo>      (bare)
+#     s: "<https://example.org/foo>"    (quoted)
+# Neither form is valid YARRRML for a constant IRI subject — yarrrml-parser
+# treats the whole `<…>` string as a template and RMLMapper URL-encodes the
+# `<` and `>` into the IRI's path, producing `<%3Chttps://…%3E>`. The
+# universally-working alternative is the YARRRML long form:
+#     s:
+#       value: https://example.org/foo
+#       type: iri
+_IRI_SUBJECT_RE = re.compile(
+    r'^(?P<indent>[ \t]+)s:[ \t]*"?<(?P<iri>https?://[^>\s"]+)>"?[ \t]*$',
+    re.MULTILINE,
+)
+
+
+def _fix_bare_iri_objects(yarrrml: str) -> str:
+    """Rewrite bare <https://…> IRIs in po: shorthand objects.
+
+    The AI sometimes emits a bare angle-bracketed IRI as the object of a
+    ``po:`` shorthand list, e.g.::
+
+        - ["cube:dataSet", <https://example.org/observation-set>]
+
+    yarrrml-parser treats that as a plain string and RMLMapper URL-encodes
+    the angle brackets into the IRI, producing ``<%3Chttps://…%3E>``. The
+    correct form is a quoted IRI string with the ``~iri`` suffix::
+
+        - ["cube:dataSet", "https://example.org/observation-set~iri"]
+
+    Returns the YARRRML with every such occurrence rewritten. Logs a
+    warning per rewrite so the underlying prompt drift stays visible.
+    """
+    matches = list(_BARE_IRI_OBJECT_RE.finditer(yarrrml))
+    if not matches:
+        return yarrrml
+    for m in matches:
+        logger.warning(
+            "Rewriting bare angle-bracket IRI object in YARRRML: <%s> → "
+            '"%s~iri"',
+            m.group(2),
+            m.group(2),
+        )
+    return _BARE_IRI_OBJECT_RE.sub(r'\1"\2~iri"\3', yarrrml)
+
+
+def _fix_iri_subject(yarrrml: str) -> str:
+    """Rewrite `s: <iri>` / `s: "<iri>"` to YARRRML's long form.
+
+    Angle-bracket IRIs are not valid in YARRRML ``s:`` lines — both the
+    quoted and bare forms get treated as plain templates and end up
+    URL-encoded by RMLMapper. The long form is the documented way to
+    assert a constant IRI subject::
+
+        s:
+          value: https://example.org/foo
+          type: iri
+
+    The rewrite preserves the line's indentation and inserts two extra
+    spaces for the nested keys. Logs a warning per rewrite so the
+    underlying prompt drift stays visible.
+    """
+    matches = list(_IRI_SUBJECT_RE.finditer(yarrrml))
+    if not matches:
+        return yarrrml
+
+    def _replace(m: re.Match[str]) -> str:
+        indent = m.group("indent")
+        iri = m.group("iri")
+        logger.warning(
+            "Rewriting angle-bracket IRI subject in YARRRML to long form: "
+            "s: <%s> → s: { value: %s, type: iri }",
+            iri,
+            iri,
+        )
+        return (
+            f"{indent}s:\n"
+            f"{indent}  value: {iri}\n"
+            f"{indent}  type: iri"
+        )
+
+    return _IRI_SUBJECT_RE.sub(_replace, yarrrml)
 
 
 class RMLGenerationError(Exception):
@@ -43,6 +136,7 @@ class RMLGenerator:
         base_uri: str,
         dataset_context: dict[str, Any] | None = None,
         reuse_context: ReuseContext | None = None,
+        output_folder: str | None = None,
     ) -> str:
         """Generate YARRRML mapping from approved proposal.
 
@@ -53,6 +147,11 @@ class RMLGenerator:
             base_uri: Base URI for generated resources.
             dataset_context: Optional normalized dataset context with column descriptions.
             reuse_context: Optional SPARQL-based reuse context with existing URIs.
+            output_folder: Optional dataset slug (typically the CLI
+                ``--output-folder``). When provided, all generated resources
+                (``ex:``, ``ex-obs:``, ``ex-property:``, ``ex-code:``, and the
+                ObservationSet IRI) live under ``<base_uri><slug>/`` so
+                multiple datasets sharing the same base URI stay isolated.
 
         Returns:
             Generated YARRRML mapping.
@@ -77,10 +176,18 @@ class RMLGenerator:
                 len(reuse_context.defined_term_sets),
             )
 
+        # When output_folder is provided, scope every dataset-specific
+        # resource (cube, observation-set, ex:*, ex-obs:*, ex-property:*,
+        # ex-code:*) under <base_uri><slug>/ so multiple mappings sharing
+        # the same base URI do not collide.
+        base_with_slash = base_uri if base_uri.endswith("/") else base_uri + "/"
+        slug = slugify(output_folder) if output_folder else ""
+        prompt_base_uri = base_with_slash + slug + "/" if slug else base_uri
+
         # Build the prompt — use a placeholder for the CSV path so that the
         # generated YARRRML is portable and can be deployed with different CSV sources.
         prompt = RML_GENERATION_PROMPT.format(
-            base_uri=base_uri,
+            base_uri=prompt_base_uri,
             mapping_proposal=proposal_text,
             csv_schema=schema_text,
             column_descriptions=column_desc_text,
@@ -103,7 +210,9 @@ class RMLGenerator:
                     "Response did not contain a yaml code block."
                 )
 
-            rml_content = yaml_blocks[0]
+            rml_content = _fix_iri_subject(
+                _fix_bare_iri_objects(yaml_blocks[0])
+            )
             logger.info(f"Generated YARRRML with {len(rml_content)} characters")
 
             return rml_content
@@ -148,7 +257,9 @@ class RMLGenerator:
                     "Response did not contain a yaml code block."
                 )
 
-            rml_content = yaml_blocks[0]
+            rml_content = _fix_iri_subject(
+                _fix_bare_iri_objects(yaml_blocks[0])
+            )
             logger.info(f"Regenerated YARRRML with {len(rml_content)} characters")
 
             return rml_content
@@ -266,6 +377,7 @@ def generate_rml(
     csv_path: str,
     base_uri: str,
     reuse_context: ReuseContext | None = None,
+    output_folder: str | None = None,
 ) -> str:
     """Convenience function to generate YARRRML mapping.
 
@@ -276,6 +388,7 @@ def generate_rml(
         csv_path: Path to the CSV file.
         base_uri: Base URI for generated resources.
         reuse_context: Optional SPARQL-based reuse context with existing URIs.
+        output_folder: Optional dataset slug (CLI ``--output-folder``).
 
     Returns:
         Generated YARRRML mapping.
@@ -284,4 +397,11 @@ def generate_rml(
         RMLGenerationError: If generation fails.
     """
     generator = RMLGenerator(ai_service)
-    return generator.generate(mapping_proposal, csv_schema, csv_path, base_uri, reuse_context)
+    return generator.generate(
+        mapping_proposal,
+        csv_schema,
+        csv_path,
+        base_uri,
+        reuse_context=reuse_context,
+        output_folder=output_folder,
+    )

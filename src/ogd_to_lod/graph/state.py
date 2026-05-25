@@ -115,6 +115,11 @@ class GraphState:
     base_uri: str | None = None
     output_folder: str | None = None
 
+    # When True, results are written to a local folder instead of a GitHub PR
+    local_output: bool = False
+    # Filesystem path where local results were written (set in CREATE_PR)
+    local_output_path: str | None = None
+
     # Parsed data (populated in ANALYZE state)
     csv_schema: dict[str, Any] | None = None
     dataset_context: dict[str, Any] | None = None
@@ -134,6 +139,7 @@ class GraphState:
 
     # Generated artifacts (populated in GENERATE state)
     generated_rml: str | None = None
+    generated_metadata: str | None = None
     rdf_preview: str | None = None
     validation_error: str | None = None
     validation_retry_count: int = 0
@@ -181,6 +187,8 @@ class GraphState:
             "context_paths": self.context_paths,
             "base_uri": self.base_uri,
             "output_folder": self.output_folder,
+            "local_output": self.local_output,
+            "local_output_path": self.local_output_path,
             "csv_schema": self.csv_schema,
             "dataset_context": self.dataset_context,
             "parsed_summary": self.parsed_summary,
@@ -191,6 +199,7 @@ class GraphState:
             "user_intent": self.user_intent.value,
             "awaiting_user_input": self.awaiting_user_input,
             "generated_rml": self.generated_rml,
+            "generated_metadata": self.generated_metadata,
             "rdf_preview": self.rdf_preview,
             "mapping_decisions": self.mapping_decisions,
             "mapping_name": self.mapping_name,

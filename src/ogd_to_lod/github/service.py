@@ -6,6 +6,7 @@ from typing import Any
 from github import Auth, Github, GithubException
 from github.Repository import Repository
 
+from ogd_to_lod._slug import slugify
 from ogd_to_lod.config import GitHubConfig
 from ogd_to_lod.logging import get_logger
 
@@ -75,6 +76,7 @@ class GitHubService:
         output_folder: str,
         csv_filename: str,
         csv_content: str,
+        metadata_content: str | None = None,
         base_branch: str = "main",
         mappings_folder: str = "mapping",
     ) -> PRResult:
@@ -91,6 +93,8 @@ class GitHubService:
             output_folder: Subfolder name within the mappings parent folder.
             csv_filename: Filename for the CSV file in the repository.
             csv_content: Content of the CSV file to commit.
+            metadata_content: Optional static metadata Turtle (cube:Cube +
+                ObservationSet) to commit as ``metadata.ttl``.
             base_branch: Branch to create PR against (default: main).
             mappings_folder: Parent folder in the repository (default: mapping).
 
@@ -131,6 +135,15 @@ class GitHubService:
                 f"Add CSV source: {csv_filename}"
             )
             logger.debug(f"Committed CSV file: {csv_path_in_repo}")
+
+            # Optionally commit the static metadata Turtle
+            if metadata_content:
+                metadata_path = f"{folder_path}/metadata.ttl"
+                self._commit_file(
+                    branch_name, metadata_path, metadata_content,
+                    f"Add static metadata: {mapping_name}"
+                )
+                logger.debug(f"Committed metadata file: {metadata_path}")
 
             # Create the PR
             pr = self._create_pr(
@@ -278,26 +291,5 @@ class GitHubService:
         return None
 
     def _sanitize_name(self, name: str) -> str:
-        """Sanitize a name for use in branch and file names.
-
-        Args:
-            name: Original name.
-
-        Returns:
-            Sanitized name with only alphanumeric characters and hyphens.
-        """
-        # Replace spaces and underscores with hyphens
-        sanitized = name.replace(" ", "-").replace("_", "-")
-        # Remove any characters that aren't alphanumeric or hyphens
-        sanitized = "".join(c for c in sanitized if c.isalnum() or c == "-")
-        # Remove consecutive hyphens
-        while "--" in sanitized:
-            sanitized = sanitized.replace("--", "-")
-        # Remove leading/trailing hyphens
-        sanitized = sanitized.strip("-")
-        # Lowercase
-        sanitized = sanitized.lower()
-        # Ensure it's not empty
-        if not sanitized:
-            sanitized = "mapping"
-        return sanitized
+        """Sanitize a name for use in branch and file names."""
+        return slugify(name)
