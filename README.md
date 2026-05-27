@@ -93,7 +93,7 @@ azure:
   deployment: "gpt-4"
 
 sparql:
-  endpoint: null  # Optional: for querying existing dimensions
+  # endpoint: "http://localhost:3030/test/query"  # SPARQL linker — early stage, disabled by default
 
 rml:
   base_uri: "https://example.org/resource/"
@@ -101,6 +101,11 @@ rml:
   rmlmapper_docker_image: "rmlio/rmlmapper-java:latest"
   yarrrml_parser_docker_image: "rmlio/yarrrml-parser:latest"
 ```
+
+> **SPARQL linker (early stage).** When a `sparql.endpoint` is configured, the tool
+> queries it for existing cube.link properties and DefinedTerms to reuse instead of
+> minting new ones. This feature is experimental and **disabled by default** — leave
+> `sparql.endpoint` commented out (or unset) to skip the lookup entirely.
 
 ## Running inside Docker
 
