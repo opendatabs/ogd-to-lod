@@ -118,6 +118,30 @@ class TestRMLGenerator:
         assert "cube:Observation" in result
         mock_ai_service.send_message.assert_called_once()
 
+    def test_output_folder_scopes_only_dataset_prefixes(
+        self, mock_ai_service, sample_mapping_proposal, sample_csv_schema
+    ):
+        """ex:/ex-obs: carry the slug; ex-property:/ex-code: stay slug-free."""
+        generator = RMLGenerator(mock_ai_service)
+
+        generator.generate(
+            mapping_proposal=sample_mapping_proposal,
+            csv_schema=sample_csv_schema,
+            csv_path="/path/to/data.csv",
+            base_uri="https://example.org/",
+            output_folder="population",
+        )
+
+        prompt = mock_ai_service.send_message.call_args[0][0]
+        # Dataset-scoped resources include the slug.
+        assert 'ex: "https://example.org/population/"' in prompt
+        assert 'ex-obs: "https://example.org/population/observation/"' in prompt
+        # Shared resources are slug-free so they can be reused across datasets.
+        assert 'ex-property: "https://example.org/property/"' in prompt
+        assert 'ex-code: "https://example.org/code/"' in prompt
+        assert 'ex-property: "https://example.org/population/property/"' not in prompt
+        assert 'ex-code: "https://example.org/population/code/"' not in prompt
+
     def test_generate_no_yaml_block(self, mock_ai_service, sample_mapping_proposal, sample_csv_schema):
         """Test generation fails when no YAML block is returned."""
         mock_ai_service.send_message.return_value = "Here is some text without any code block."
@@ -333,6 +357,7 @@ class TestRMLPrompts:
     def test_prompt_has_placeholders(self):
         """Test that the prompt has required placeholders."""
         assert "{base_uri}" in RML_GENERATION_PROMPT
+        assert "{dataset_uri}" in RML_GENERATION_PROMPT
         assert "CSV_SOURCE" in RML_GENERATION_PROMPT
         assert "{mapping_proposal}" in RML_GENERATION_PROMPT
         assert "{csv_schema}" in RML_GENERATION_PROMPT

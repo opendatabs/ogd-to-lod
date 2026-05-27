@@ -463,6 +463,7 @@ def generate_node(state: GraphState, ai_service: AIService) -> GraphState:
             mapping_proposal=state.mapping_proposal.to_dict()
             if state.mapping_proposal
             else None,
+            reuse_context=state.reuse_context,
         )
         logger.info(
             "Generated metadata.ttl (%d characters)",
