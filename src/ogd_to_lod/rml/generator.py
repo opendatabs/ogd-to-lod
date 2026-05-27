@@ -176,18 +176,22 @@ class RMLGenerator:
                 len(reuse_context.defined_term_sets),
             )
 
-        # When output_folder is provided, scope every dataset-specific
-        # resource (cube, observation-set, ex:*, ex-obs:*, ex-property:*,
-        # ex-code:*) under <base_uri><slug>/ so multiple mappings sharing
-        # the same base URI do not collide.
+        # Two URI scopes:
+        # - dataset_uri (with slug): cube, observation-set and observations
+        #   (ex:*, ex-obs:*) are dataset-specific and must stay isolated when
+        #   multiple datasets share the same base URI.
+        # - base (slug-free): properties and code/DefinedTerm values
+        #   (ex-property:*, ex-code:*) are shared concepts and live under the
+        #   bare base URI so they can be reused across datasets.
         base_with_slash = base_uri if base_uri.endswith("/") else base_uri + "/"
         slug = slugify(output_folder) if output_folder else ""
-        prompt_base_uri = base_with_slash + slug + "/" if slug else base_uri
+        dataset_uri = base_with_slash + slug + "/" if slug else base_uri
 
         # Build the prompt — use a placeholder for the CSV path so that the
         # generated YARRRML is portable and can be deployed with different CSV sources.
         prompt = RML_GENERATION_PROMPT.format(
-            base_uri=prompt_base_uri,
+            base_uri=base_with_slash,
+            dataset_uri=dataset_uri,
             mapping_proposal=proposal_text,
             csv_schema=schema_text,
             column_descriptions=column_desc_text,
