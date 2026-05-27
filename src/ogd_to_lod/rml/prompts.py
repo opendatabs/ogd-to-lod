@@ -22,11 +22,16 @@ prefixes:
   schema: "http://schema.org/"
   cube: "https://cube.link/"
   xsd: "http://www.w3.org/2001/XMLSchema#"
-  ex: "{base_uri}"
-  ex-obs: "{base_uri}observation/"
+  ex: "{dataset_uri}"
+  ex-obs: "{dataset_uri}observation/"
   ex-property: "{base_uri}property/"
   ex-code: "{base_uri}code/"
 ```
+
+`ex:` and `ex-obs:` are **dataset-scoped** (they include the dataset slug) \
+because each dataset has its own cube, ObservationSet and observations. \
+`ex-property:` and `ex-code:` are **shared** (slug-free) so the same property \
+and code/DefinedTerm URIs can be reused across datasets.
 
 ## Source Definition
 
@@ -93,7 +98,7 @@ mappings:
 
 ## ObservationSet Link (REQUIRED)
 
-The static metadata file declares `<{base_uri}observation-set>` as a \
+The static metadata file declares `<{dataset_uri}observation-set>` as a \
 `cube:ObservationSet`. The YARRRML must add a per-row mapping that links \
 this set to each generated observation via `cube:observation` (the \
 ObservationSet → Observation direction is the canonical cube.link link; \
@@ -112,8 +117,8 @@ mapping for the object position so the IRIs match exactly:
 
 Notes:
 - The subject is a **CURIE**: `ex:` is declared in the `prefixes:` block \
-above as `{base_uri}`, so `ex:observation-set` expands to \
-`<{base_uri}observation-set>`. CURIE is the **only** working form for a \
+above as `{dataset_uri}`, so `ex:observation-set` expands to \
+`<{dataset_uri}observation-set>`. CURIE is the **only** working form for a \
 constant IRI subject — angle-bracket forms (`s: <iri>` or \
 `s: "<iri>"`) are not valid YARRRML and produce URL-encoded broken IRIs \
 in the output (see "Constant IRI subjects" rule below).

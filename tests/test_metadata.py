@@ -1,5 +1,6 @@
 """Tests for static RDF metadata generation (cube:Cube + ObservationSet)."""
 
+from ogd_to_lod.lookup import MatchedProperty, ReuseContext
 from ogd_to_lod.metadata import MetadataGenerator, generate_metadata
 
 
@@ -140,20 +141,24 @@ def test_property_blocks_emitted_for_dimensions_and_measures():
             measures=[{"column": "value"}],
         ),
     )
+    # Properties are slug-free (shared/reusable) even though the cube and
+    # observation-set are scoped by the "population" slug.
     assert (
-        "<https://example.org/datasets/foo/population/property/ZEIT> "
+        "<https://example.org/datasets/foo/property/ZEIT> "
         "a cube:KeyDimension"
     ) in ttl
     assert 'schema:name "year"' in ttl
     assert 'schema:description "The year of observation."' in ttl
     assert (
-        "<https://example.org/datasets/foo/population/property/RAUM> "
+        "<https://example.org/datasets/foo/property/RAUM> "
         "a cube:KeyDimension"
     ) in ttl
     assert (
-        "<https://example.org/datasets/foo/population/property/value> "
+        "<https://example.org/datasets/foo/property/value> "
         "a cube:MeasureDimension"
     ) in ttl
+    # The slug must NOT appear in property IRIs.
+    assert "/population/property/" not in ttl
 
 
 def test_property_block_sanitisation_matches_prompt_convention():
@@ -169,8 +174,8 @@ def test_property_block_sanitisation_matches_prompt_convention():
             ],
         ),
     )
-    assert "<https://example.org/datasets/foo/aq/property/O3_ug_m3>" in ttl
-    assert "<https://example.org/datasets/foo/aq/property/PM2_5_ug_m3>" in ttl
+    assert "<https://example.org/datasets/foo/property/O3_ug_m3>" in ttl
+    assert "<https://example.org/datasets/foo/property/PM2_5_ug_m3>" in ttl
 
 
 def test_no_mapping_proposal_emits_no_property_blocks():
@@ -230,7 +235,7 @@ def test_colliding_property_iris_emit_one_merged_block():
     )
 
     # Exactly one block for the ZEIT IRI, with the FIRST column's name.
-    iri = "<https://example.org/datasets/foo/x/property/ZEIT>"
+    iri = "<https://example.org/datasets/foo/property/ZEIT>"
     assert ttl.count(f"{iri} a cube:KeyDimension") == 1
     assert 'schema:name "datetime"' in ttl
     assert 'schema:name "ZEIT_LOCAL"' not in ttl
@@ -260,3 +265,38 @@ def test_collision_back_fills_missing_description_from_second_entry():
     # First column's name is kept, second's description back-fills.
     assert 'schema:name "datetime"' in ttl
     assert 'schema:description "Local-time fallback."' in ttl
+
+
+def test_reused_property_block_is_skipped():
+    """A column whose property is reused from the endpoint gets no local block."""
+    reuse = ReuseContext(
+        properties=[
+            MatchedProperty(
+                existing_uri="https://ld.example.org/canonical/year",
+                label="Year",
+                matched_column="year",
+            )
+        ]
+    )
+    ttl = generate_metadata(
+        BASE,
+        {
+            "column_contexts": {
+                "year": {"description": "The year of observation."},
+                "value": {"description": "Observed value."},
+            }
+        },
+        output_folder="population",
+        mapping_proposal=_proposal(
+            dimensions=[{"column": "year", "type": "temporal"}],
+            measures=[{"column": "value"}],
+        ),
+        reuse_context=reuse,
+    )
+    # The reused 'year' property is not redefined locally...
+    assert "<https://example.org/datasets/foo/property/ZEIT>" not in ttl
+    assert 'schema:description "The year of observation."' not in ttl
+    # ...but the non-reused 'value' measure still gets a block.
+    assert (
+        "<https://example.org/datasets/foo/property/value> a cube:MeasureDimension"
+    ) in ttl

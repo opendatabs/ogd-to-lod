@@ -15,10 +15,13 @@ see GitHub issue #41.
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ogd_to_lod._slug import slugify
 from ogd_to_lod.logging import get_logger
+
+if TYPE_CHECKING:
+    from ogd_to_lod.lookup import ReuseContext
 
 logger = get_logger(__name__)
 
@@ -44,6 +47,7 @@ class MetadataGenerator:
         dataset_context: dict[str, Any] | None = None,
         output_folder: str | None = None,
         mapping_proposal: dict[str, Any] | None = None,
+        reuse_context: ReuseContext | None = None,
     ) -> str:
         """Generate the metadata Turtle string.
 
@@ -61,20 +65,26 @@ class MetadataGenerator:
                 (``MappingProposal.to_dict()``). When provided, a
                 ``schema:name`` + ``schema:description`` block is emitted
                 for each dimension and measure property IRI.
+            reuse_context: Optional SPARQL-based reuse context. Columns whose
+                property is reused from an existing endpoint URI are skipped
+                here — that vocabulary is already defined upstream, so we do
+                not redefine it under our own ``property/`` IRI.
 
         Returns:
             Turtle document as a string.
         """
         base_with_slash = base_uri if base_uri.endswith("/") else base_uri + "/"
         slug = slugify(output_folder) if output_folder else ""
+        # Cube and ObservationSet are dataset-specific (slug-scoped); properties
+        # are shared concepts and live under the bare base URI so they can be
+        # reused across datasets (mirrors the YARRRML ex-property: prefix).
         if slug:
             cube_iri = base_with_slash + slug
             obs_set_iri = cube_iri + "/observation-set"
-            property_prefix = cube_iri + "/property/"
         else:
             cube_iri = base_uri
             obs_set_iri = base_with_slash + "observation-set"
-            property_prefix = base_with_slash + "property/"
+        property_prefix = base_with_slash + "property/"
 
         ctx = dataset_context or {}
 
@@ -119,6 +129,16 @@ class MetadataGenerator:
 
         obs_set_block = f"<{obs_set_iri}> a cube:ObservationSet .\n"
 
+        # Columns whose property is reused from an existing endpoint URI: do
+        # not emit a local property block for them (the vocabulary already
+        # exists upstream, and the YARRRML predicate is the existing URI, not
+        # our property/<name> IRI).
+        reused_cols = (
+            {p.matched_column for p in reuse_context.properties}
+            if reuse_context
+            else set()
+        )
+
         property_blocks: list[str] = []
         if mapping_proposal:
             column_contexts = (
@@ -126,6 +146,8 @@ class MetadataGenerator:
             )
             descriptors: list[dict[str, Any]] = []
             for dim in mapping_proposal.get("dimensions", []) or []:
+                if dim.get("column", "") in reused_cols:
+                    continue
                 d = _property_descriptor(
                     property_prefix,
                     column=dim.get("column", ""),
@@ -136,6 +158,8 @@ class MetadataGenerator:
                 if d:
                     descriptors.append(d)
             for measure in mapping_proposal.get("measures", []) or []:
+                if measure.get("column", "") in reused_cols:
+                    continue
                 d = _property_descriptor(
                     property_prefix,
                     column=measure.get("column", ""),
@@ -320,6 +344,7 @@ def generate_metadata(
     dataset_context: dict[str, Any] | None = None,
     output_folder: str | None = None,
     mapping_proposal: dict[str, Any] | None = None,
+    reuse_context: ReuseContext | None = None,
 ) -> str:
     """Convenience wrapper around :class:`MetadataGenerator`."""
     return MetadataGenerator().generate(
@@ -327,4 +352,5 @@ def generate_metadata(
         dataset_context,
         output_folder,
         mapping_proposal,
+        reuse_context,
     )
