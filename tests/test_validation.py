@@ -432,6 +432,23 @@ class TestYARRRMLParserDocker:
         cmd = mock_run.call_args[0][0]
         assert custom_image in cmd
 
+    @patch("subprocess.run")
+    def test_yarrrml_parser_missing_input_detected_even_with_zero_exit(self, mock_run):
+        """Parser sometimes returns 0 even when input file is missing."""
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout="",
+            stderr="The input file /data/mapping.yarrrml.yaml is not found.",
+        )
+
+        validator = RMLValidator(use_docker=True)
+        result = validator._run_yarrrml_parser_docker("/tmp/testdir", timeout=30)
+
+        assert result.valid is False
+        assert result.error_category == "file_not_found"
+        assert "not found" in (result.error_message or "").lower()
+
 
 class TestIsEmptyRDFOutput:
     """Tests for _is_empty_rdf_output static helper."""
