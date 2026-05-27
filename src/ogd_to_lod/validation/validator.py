@@ -171,6 +171,7 @@ class RMLValidator:
 
         try:
             yarrrml_file = Path(tmpdir.name) / "mapping.yarrrml.yaml"
+            mapping_ttl_file = Path(tmpdir.name) / "mapping.ttl"
             output_file = Path(tmpdir.name) / "output.ttl"
 
             # Replace the CSV source placeholder with the container-absolute path.
@@ -186,6 +187,21 @@ class RMLValidator:
                 parser_result = self._run_yarrrml_parser_docker(tmpdir.name, timeout)
                 if not parser_result.valid:
                     return parser_result
+                if not mapping_ttl_file.exists():
+                    return ValidationResult(
+                        valid=False,
+                        error_message=(
+                            "yarrrml-parser did not produce mapping.ttl. "
+                            "This often means the input mapping file path is not visible "
+                            "to the Docker daemon (bind mount mismatch)."
+                        ),
+                        error_category="file_not_found",
+                        user_friendly_error=(
+                            "The intermediate Turtle mapping could not be generated. "
+                            "Ensure the temporary working directory is mounted from a "
+                            "host-visible path (for Docker-in-Docker sibling containers)."
+                        ),
+                    )
 
                 # Step 2: RMLMapper executes Turtle RML against sample CSV
                 result = self._run_rmlmapper_docker(
@@ -275,7 +291,21 @@ class RMLValidator:
             TemporaryDirectory containing the sample CSV. Caller must manage
             its lifecycle (cleanup).
         """
-        tmpdir = tempfile.TemporaryDirectory()
+        tmpdir_base = os.environ.get("TMPDIR")
+        tempdir_kwargs: dict[str, str] = {}
+        if tmpdir_base:
+            tmpdir_path = Path(tmpdir_base)
+            try:
+                tmpdir_path.mkdir(parents=True, exist_ok=True)
+                tempdir_kwargs["dir"] = str(tmpdir_path)
+            except OSError as e:
+                logger.warning(
+                    "TMPDIR '%s' is unusable (%s), falling back to system temp dir",
+                    tmpdir_base,
+                    e,
+                )
+
+        tmpdir = tempfile.TemporaryDirectory(**tempdir_kwargs)
 
         try:
             source_path = Path(csv_path)
@@ -541,6 +571,20 @@ class RMLValidator:
                 user_friendly_error=(
                     "The YARRRML mapping could not be parsed. "
                     "Check the YAML syntax and YARRRML structure."
+                ),
+            )
+
+        # yarrrml-parser may return zero even when input is missing.
+        parser_output = f"{result.stdout}\n{result.stderr}".lower()
+        if "input file" in parser_output and "not found" in parser_output:
+            error_msg = (result.stderr or result.stdout).strip()
+            return ValidationResult(
+                valid=False,
+                error_message=error_msg,
+                error_category="file_not_found",
+                user_friendly_error=(
+                    "yarrrml-parser could not access the input YARRRML file. "
+                    "This is usually a Docker bind-mount path visibility issue."
                 ),
             )
 
