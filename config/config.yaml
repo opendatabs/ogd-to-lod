@@ -3,7 +3,7 @@
 
 github:
   # Target repository for generated mappings (can also be set via GITHUB_REPO env var)
-  repo: "redlink-gmbh/ogd-to-lod-mappings"
+  repo: "opendatabs/ogd-to-lod"
   token: "${APP_GITHUB_TOKEN}"
   # Parent folder in the repository for all mappings (default: mapping)
   # mappings_folder: "mapping"
