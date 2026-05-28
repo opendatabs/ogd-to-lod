@@ -1,0 +1,66 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.domain.ch/statistics/weather-binningen-hourly> a cube:Cube ;
+    schema:name "LOD mit KI Test - Luftqualität Station Basel-Binningen" ;
+    schema:description "Stündliche Messungen der [automatischen Wetterstation Basel-Binningen](https://www.meteoschweiz.admin.ch/home/messwerte.html?param=messnetz-automatisch&station=BAS)." ;
+    schema:publisher "MeteoSchweiz" ;
+    dcterms:issued "2019-11-06T00:00:00" ;
+    dcterms:modified "2026-01-20T08:20:47.599000+00:00"^^xsd:dateTime ;
+    schema:keywords "Luft", "Ozon", "Stickstoffdioxid", "Stickoxid", "NO2", "NOX", "Feinstaub", "Kohlenmonoxid", "CO", "Partikelzahlkonzentraion", "Russ", "Temperatur", "Niederschlag", "Globalstrahlung" ;
+    cube:observationSet <https://ld.domain.ch/statistics/weather-binningen-hourly/observation-set> .
+
+<https://ld.domain.ch/statistics/weather-binningen-hourly/observation-set> a cube:ObservationSet .
+
+<https://ld.domain.ch/statistics/property/ZEIT> a cube:KeyDimension ;
+    schema:name "datetime" ;
+    schema:description "Zeitstempel in UTC" .
+
+<https://ld.domain.ch/statistics/property/RAUM> a cube:KeyDimension ;
+    schema:name "location" .
+
+<https://ld.domain.ch/statistics/property/O3_ug_m3> a cube:MeasureDimension ;
+    schema:name "O3 [ug/m3]" ;
+    schema:description "Ozon" .
+
+<https://ld.domain.ch/statistics/property/NO2_ug_m3> a cube:MeasureDimension ;
+    schema:name "NO2 [ug/m3]" ;
+    schema:description "Stickstoffdioxid" .
+
+<https://ld.domain.ch/statistics/property/PM10_ug_m3> a cube:MeasureDimension ;
+    schema:name "PM10 [ug/m3]" ;
+    schema:description "Feinstaub mit Partikelgrösse < 10 tausendstel Millimeter" .
+
+<https://ld.domain.ch/statistics/property/PM2_5_ug_m3> a cube:MeasureDimension ;
+    schema:name "PM2.5 [ug/m3]" ;
+    schema:description "Feinstaub mit Partikelgrösse < 2.5 tausendstel Millimeter" .
+
+<https://ld.domain.ch/statistics/property/CPC_1_cm3> a cube:MeasureDimension ;
+    schema:name "CPC [1/cm3]" ;
+    schema:description "Partikelanzahlkonzentration" .
+
+<https://ld.domain.ch/statistics/property/EC_ug_m3> a cube:MeasureDimension ;
+    schema:name "EC [ug/m3]" ;
+    schema:description "Russ (EC in PM2.5)" .
+
+<https://ld.domain.ch/statistics/property/PREC_mm> a cube:MeasureDimension ;
+    schema:name "PREC [mm]" ;
+    schema:description "Niederschlag" .
+
+<https://ld.domain.ch/statistics/property/RAD_W_m2> a cube:MeasureDimension ;
+    schema:name "RAD [W/m2]" ;
+    schema:description "Globalstrahlung" .
+
+<https://ld.domain.ch/statistics/property/SO2_ug_m3> a cube:MeasureDimension ;
+    schema:name "SO2 [ug/m3]" ;
+    schema:description "Schwefeldioxid" .
+
+<https://ld.domain.ch/statistics/property/NOX_ug_m3_eq_NO2> a cube:MeasureDimension ;
+    schema:name "NOX [ug/m3 eq. NO2]" ;
+    schema:disambiguatingDescription "Keine Beschreibung für dieses Feld verfügbar." .
+
+<https://ld.domain.ch/statistics/property/TEMP_C> a cube:MeasureDimension ;
+    schema:name "TEMP [C]" ;
+    schema:disambiguatingDescription "Keine Beschreibung für dieses Feld verfügbar." .
