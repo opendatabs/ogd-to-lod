@@ -1,0 +1,59 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100178> a cube:Cube ;
+    schema:name "Smarte Strasse: Luftqualität Vergleichsmessungen" ;
+    schema:description "Das Lufthygieneamt beider Basel (LHA) testet im Projekt «Smarte Strasse» kosteneffiziente Mikrosensoren auf ihre Genauigkeit und Zuverlässigkeit. Der installierte Sensor vom Typ «Nubo» der Firma Sensirion AG ist in der Lage, die Konzentration verschiedener Schadstoffe in der Luft in Echtzeit zu ermitteln. Gemessen werden die Gehalte der Gase Stickstoffdioxid (NO2) und Ozon (O3), sowie die feinere Fraktion des Feinstaubs «PM2.5». Dieser Datensatz enthält die Daten von drei «Nubo»- Sensoren, welche an den permanenten Messstationen des LHA am St. Johanns-Platz, an der Feldbergstrasse und auf der Autobahn A2 in der Hard installiert und gegen die Referenzmessgeräte des LHA verglichen werden. Genaue Standorte dieser Sensoren: Feldbergstrasse: 2611747 / 1268491, St. Johanns-Platz: 2610790 / 1268370, A2 Hard: 2615839 / 1265282. Weitere Informationen zur Luftqualität in der Region Basel sind auf www.luftqualitaet.ch verfügbar. Hinweis: Die Luft-Sensoren an der Gundeldingerstrasse wurden am 29.6.23 abmontiert. Seit Anfang/Mitte Juni wurden keine Daten mehr erhoben." ;
+    schema:publisher "Amt für Umwelt und Energie" ;
+    dcterms:license "CC BY 4.0" ;
+    schema:keywords "Feinstaub", "Luftqualität", "NO2", "O3", "PM2.5", "Smarte Strasse" ;
+    cube:observationSet <https://ld.bs.ch/100178/observation-set> .
+
+<https://ld.bs.ch/100178/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "timestamp" .
+
+<https://ld.bs.ch/property/station> a cube:KeyDimension ;
+    schema:name "station" .
+
+<https://ld.bs.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "spatial_coverage" .
+
+<https://ld.bs.ch/property/a2hard_no2> a cube:MeasureDimension ;
+    schema:name "a2hard_no2" ;
+    schema:description "NO2-Messwert am Standort A2 Hard" .
+
+<https://ld.bs.ch/property/a2hard_o3> a cube:MeasureDimension ;
+    schema:name "a2hard_o3" ;
+    schema:description "O3-Messwert am Standort A2 Hard" .
+
+<https://ld.bs.ch/property/a2hard_pm25> a cube:MeasureDimension ;
+    schema:name "a2hard_pm25" ;
+    schema:description "PM2,5-Messwert am Standort A2 Hard" .
+
+<https://ld.bs.ch/property/feldbergstr2_no2> a cube:MeasureDimension ;
+    schema:name "feldbergstr2_no2" ;
+    schema:description "NO2-Messwert am Standort Feldbergstrasse" .
+
+<https://ld.bs.ch/property/feldbergstr2_o3> a cube:MeasureDimension ;
+    schema:name "feldbergstr2_o3" ;
+    schema:description "O3-Messwert am Standort Feldbergstrasse" .
+
+<https://ld.bs.ch/property/feldbergstr2_pm25> a cube:MeasureDimension ;
+    schema:name "feldbergstr2_pm25" ;
+    schema:description "PM2,5-Messwert am Standort Feldbergstrasse" .
+
+<https://ld.bs.ch/property/stjohann2_no2> a cube:MeasureDimension ;
+    schema:name "stjohann2_no2" ;
+    schema:description "NO2-Messwert am Standort St. Johanns-Platz" .
+
+<https://ld.bs.ch/property/stjohann2_o3> a cube:MeasureDimension ;
+    schema:name "stjohann2_o3" ;
+    schema:description "O3-Messwert am Standort St. Johanns-Platz" .
+
+<https://ld.bs.ch/property/stjohann2_pm25> a cube:MeasureDimension ;
+    schema:name "stjohann2_pm25" ;
+    schema:description "PM2,5-Messwert am Standort St. Johanns-Platz" .
