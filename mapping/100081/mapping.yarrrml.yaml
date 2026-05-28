@@ -1,0 +1,71 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100081/"
+  ex-obs: "https://ld.bs.ch/100081/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(zeitstempel)_$(id)"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(zeitstempel)", xsd:dateTime]
+      - ["ex-property:id", "ex-code:$(id)~iri"]
+      - ["ex-property:name", "ex-code:$(name)~iri"]
+      - ["ex-property:station", "ex-code:$(station)~iri"]
+      - ["ex-property:geo_point_2d", "ex-code:$(geo_point_2d)~iri"]
+      - ["ex-property:pm_2_5", "$(pm_2_5)", xsd:decimal]
+
+  idCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(id)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(id)"]
+
+  nameCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(name)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(name)"]
+
+  stationCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(station)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(station)"]
+
+  geoPoint2dCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(geo_point_2d)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(geo_point_2d)"]
+
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(zeitstempel)_$(id)~iri"]
