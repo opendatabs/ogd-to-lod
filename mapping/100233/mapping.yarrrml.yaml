@@ -1,0 +1,125 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100233/"
+  ex-obs: "https://ld.bs.ch/100233/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp_interval_start)"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp_interval_start)", xsd:dateTime]
+      - ["ex-property:RAUM", "ex-code:Kanton_Basel_Stadt~iri"]
+      - ["ex-property:year", "$(year)", xsd:gYear]
+      - ["ex-property:month", "$(month)", xsd:integer]
+      - ["ex-property:day", "$(day)", xsd:integer]
+      - ["ex-property:weekday", "$(weekday)", xsd:integer]
+      - ["ex-property:dayofyear", "$(dayofyear)", xsd:integer]
+      - ["ex-property:quarter", "$(quarter)", xsd:integer]
+      - ["ex-property:weekofyear", "$(weekofyear)", xsd:integer]
+      - ["ex-property:stromverbrauch_kwh", "$(stromverbrauch_kwh)", xsd:decimal]
+      - ["ex-property:grundversorgte_kunden_kwh", "$(grundversorgte_kunden_kwh)", xsd:decimal]
+      - ["ex-property:freie_kunden_kwh", "$(freie_kunden_kwh)", xsd:decimal]
+
+  # Code value for ZEIT (15-min interval)
+  zeitCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(timestamp_interval_start)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(timestamp_interval_start)"]
+
+  # Code value for spatial coverage - static ('Kanton Basel-Stadt')
+  raumCodes:
+    sources:
+      - csvSource
+    s: "ex-code:Kanton_Basel_Stadt"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "Kanton Basel-Stadt"]
+
+  # Code value for year
+  yearCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(year)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(year)"]
+
+  # Code value for month
+  monthCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(month)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(month)"]
+
+  # Code value for day
+  dayCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(day)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(day)"]
+
+  # Code value for weekday
+  weekdayCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(weekday)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(weekday)"]
+
+  # Code value for dayofyear
+  dayofyearCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(dayofyear)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(dayofyear)"]
+
+  # Code value for quarter
+  quarterCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(quarter)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(quarter)"]
+
+  # Code value for weekofyear
+  weekofyearCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(weekofyear)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(weekofyear)"]
+
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp_interval_start)~iri"]
