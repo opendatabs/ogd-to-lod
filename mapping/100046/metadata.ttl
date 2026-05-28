@@ -1,0 +1,38 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100046> a cube:Cube ;
+    schema:name "Rheinmesswerte kontinuierlich" ;
+    schema:description "Kontinuierlich gemessene Parameter der Rheinüberwachungsstation Weil am Rhein (RUES), jeweils gemittelt über 15 Minuten. Werte werden alle 15 Minuten wie von den Sensoren gemessen als Rohdaten publiziert. Jährlich werden die Daten manuell plausibilisiert und als Stundenwerte veröffentlicht. Standort: Rheinkilometer 171.37km Koordinaten: E 7.594868 N 47.601299 bzw. E 7° 35‘ 39.55“ N 47° 36‘ 4.68“ bzw. 611740 / 272310. Träger: Schweizerische Eidgenossenschaft; Bundesamt für Umwelt (BAFU), Land Baden-Württemberg; Ministerium für Umwelt, Klima und Energiewirtschaft / Landesanstalt für Umwelt, Messungen und Naturschutz Baden-Württemberg (LUBW). Messbetrieb / Unterhalt: Amt für Umwelt und Energie Basel-Stadt (AUE-BS)." ;
+    schema:publisher "Amt für Umwelt und Energie" ;
+    dcterms:issued "2019-11-05"^^xsd:date ;
+    dcterms:license "CC BY 4.0" ;
+    schema:keywords "Elektrische Leitfähigkeit", "O2-Gehalt", "Rhein", "Sauerstoffgehalt", "Temperatur", "Wassertemperatur", "pH-Wert" ;
+    cube:observationSet <https://ld.bs.ch/100046/observation-set> .
+
+<https://ld.bs.ch/100046/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "startzeitpunkt" ;
+    schema:description "Start der Messung" .
+
+<https://ld.bs.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "spatial_coverage" .
+
+<https://ld.bs.ch/property/rus_w_o_s3_lf> a cube:MeasureDimension ;
+    schema:name "rus_w_o_s3_lf" ;
+    schema:description "Elektrische Leitfähigkeit Strang S3 in µS/cm, Koordinaten 611740 / 272310" .
+
+<https://ld.bs.ch/property/rus_w_o_s3_o2> a cube:MeasureDimension ;
+    schema:name "rus_w_o_s3_o2" ;
+    schema:description "Sauerstoffgehalt Strang S3 in mg/L" .
+
+<https://ld.bs.ch/property/rus_w_o_s3_ph> a cube:MeasureDimension ;
+    schema:name "rus_w_o_s3_ph" ;
+    schema:description "pH-Wert Strang S3" .
+
+<https://ld.bs.ch/property/rus_w_o_s3_te> a cube:MeasureDimension ;
+    schema:name "rus_w_o_s3_te" ;
+    schema:description "Temperatur Strang S3 in °C" .
