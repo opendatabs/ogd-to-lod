@@ -1,0 +1,55 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.domain.ch/statistics/weather-binningen-hourly/"
+  ex-obs: "https://ld.domain.ch/statistics/weather-binningen-hourly/observation/"
+  ex-property: "https://ld.domain.ch/statistics/property/"
+  ex-code: "https://ld.domain.ch/statistics/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(datetime)"
+    po:
+      - [a, cube:Observation]
+      - [ex-property:ZEIT, "$(datetime)", xsd:dateTime]
+      - [ex-property:timestamp_text, "$(timestamp_text)", xsd:string]
+      - [ex-property:RAUM, "ex-code:Basel-Binningen~iri"]
+      - ["ex-property:O3_ug_m3", "$(O3 [ug/m3])", xsd:decimal]
+      - ["ex-property:NO2_ug_m3", "$(NO2 [ug/m3])", xsd:decimal]
+      - ["ex-property:PM10_ug_m3", "$(PM10 [ug/m3])", xsd:decimal]
+      - ["ex-property:PM2_5_ug_m3", "$(PM2.5 [ug/m3])", xsd:decimal]
+      - ["ex-property:CPC_1_cm3", "$(CPC [1/cm3])", xsd:decimal]
+      - ["ex-property:EC_ug_m3", "$(EC [ug/m3])", xsd:decimal]
+      - ["ex-property:PREC_mm", "$(PREC [mm])", xsd:decimal]
+      - ["ex-property:RAD_W_m2", "$(RAD [W/m2])", xsd:decimal]
+      - ["ex-property:SO2_ug_m3", "$(SO2 [ug/m3])", xsd:decimal]
+      - ["ex-property:NOX_ug_m3_eq_NO2", "$(NOX [ug/m3 eq. NO2])", xsd:decimal]
+      - ["ex-property:TEMP_C", "$(TEMP [C])", xsd:decimal]
+
+  # RAUM is always Basel-Binningen in this dataset, so emit one DefinedTerm
+  locationCode:
+    sources:
+      - csvSource
+    s: "ex-code:Basel-Binningen"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "Basel-Binningen"]
+
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(datetime)~iri"]
