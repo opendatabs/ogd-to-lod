@@ -211,13 +211,13 @@ string + `~iri`, no angle brackets):
 
 ```yaml
 # WRONG — angle-bracket IRI in object position:
-- [cube:observation, <https://ld.bs.chobservation/2024_CH>]
+- [cube:observation, <https://ld.bs.ch/observation/2024_CH>]
 
 # CORRECT — prefixed CURIE + ~iri (the prefix is declared in prefixes:):
 - [cube:observation, "ex-obs:2024_CH~iri"]
 
 # Also correct — full IRI as a string + ~iri (no angle brackets):
-- [cube:observation, "https://ld.bs.chobservation/2024_CH~iri"]
+- [cube:observation, "https://ld.bs.ch/observation/2024_CH~iri"]
 ```
 
 **CRITICAL — Constant IRI subjects MUST be CURIEs**: Angle-bracket IRIs \
@@ -230,11 +230,11 @@ that resolves via a declared prefix instead.
 ```yaml
 # WRONG — bare angle-bracket IRI on an s: line:
   observationSetLink:
-    s: <https://ld.bs.chobservation-set>
+    s: <https://ld.bs.ch/observation-set>
 
 # WRONG — quoted angle-bracket IRI on an s: line:
   observationSetLink:
-    s: "<https://ld.bs.chobservation-set>"
+    s: "<https://ld.bs.ch/observation-set>"
 
 # CORRECT — CURIE using a declared prefix (ex: is in prefixes:):
   observationSetLink:
@@ -327,7 +327,7 @@ the brackets. Use a CURIE (declared in `prefixes:`) instead.
 In **object** position, append `~iri` to the CURIE:
 ```yaml
 # Wrong — bare angle-bracket IRI in object position:
-- [cube:observation, <https://ld.bs.chobservation/2024_CH>]
+- [cube:observation, <https://ld.bs.ch/observation/2024_CH>]
 # Correct — prefixed CURIE + ~iri:
 - [cube:observation, "ex-obs:2024_CH~iri"]
 ```
@@ -337,10 +337,10 @@ no `~iri` suffix:
 ```yaml
 # Wrong — bare angle-bracket IRI on s: line:
   observationSetLink:
-    s: <https://ld.bs.chobservation-set>
+    s: <https://ld.bs.ch/observation-set>
 # Wrong — quoted angle-bracket IRI on s: line:
   observationSetLink:
-    s: "<https://ld.bs.chobservation-set>"
+    s: "<https://ld.bs.ch/observation-set>"
 # Correct — CURIE using a declared prefix:
   observationSetLink:
     s: ex:observation-set

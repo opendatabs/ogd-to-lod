@@ -75,7 +75,7 @@ services:
   #
   # DATASET_BASE_URL must match the host prefix of the IRIs you want to
   # dereference. The default below matches the example dataset shipped
-  # with this repo (https://ld.bs.ch<slug>/...). Change
+  # with this repo (https://ld.bs.ch/<slug>/...). Change
   # it to whatever your generated cube IRIs use.
   trifid:
     image: zazuko/trifid:latest
@@ -86,7 +86,7 @@ services:
       - "8080:8080"
     environment:
       - SPARQL_ENDPOINT_URL=http://fuseki:3030/test/query
-      - DATASET_BASE_URL=${DATASET_BASE_URL:-https://ld.bs.ch}
+      - DATASET_BASE_URL=${DATASET_BASE_URL:-https://ld.bs.ch/}
     restart: unless-stopped
 
 volumes:
