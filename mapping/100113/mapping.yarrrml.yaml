@@ -1,0 +1,55 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100113/"
+  ex-obs: "https://ld.bs.ch/100113/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(time)_$(sensornr)"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(time)", xsd:dateTime]
+      - ["ex-property:RAUM", "ex-code:$(sensornr)~iri"]
+      - ["ex-property:longitude", "$(longitude)", xsd:decimal]
+      - ["ex-property:latitude", "$(latitude)", xsd:decimal]
+      - ["ex-property:pm25", "$(pm25)", xsd:decimal]
+      - ["ex-property:pm10", "$(pm10)", xsd:decimal]
+      - ["ex-property:location", "ex-code:Basel_Switzerland~iri"]
+
+  sensornrCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(sensornr)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(sensornr)"]
+
+  locationCode:
+    sources:
+      - csvSource
+    s: ex-code:Basel_Switzerland
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "Basel, Switzerland"]
+
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(time)_$(sensornr)~iri"]
