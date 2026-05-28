@@ -1,0 +1,41 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100269/"
+  ex-obs: "https://ld.bs.ch/100269/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp_text)_Wiese"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp_text)", xsd:dateTime]
+      - ["ex-property:RAUM", "ex-code:Wiese~iri"]
+      - ["ex-property:temperatur", "$(temperatur)", xsd:decimal]
+  spatialCodes:
+    sources:
+      - csvSource
+    s: "ex-code:Wiese"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "Wiese"]
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp_text)_Wiese~iri"]

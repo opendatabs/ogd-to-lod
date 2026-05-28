@@ -1,0 +1,26 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100269> a cube:Cube ;
+    schema:name "Temperatur Wiese" ;
+    schema:description "Der Datensatz zeigt die stündlichen Temperaturwerte der Wiese an. Koordinaten: 47.581638577259945, 7.59193858146811" ;
+    schema:publisher "Tiefbauamt" ;
+    dcterms:license "CC BY 4.0" ;
+    schema:keywords "Fluss" ;
+    cube:observationSet <https://ld.bs.ch/100269/observation-set> .
+
+<https://ld.bs.ch/100269/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "timestamp_text" ;
+    schema:description "Datum und Uhrzeit" .
+
+<https://ld.bs.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "spatial_coverage" .
+
+<https://ld.bs.ch/property/temperatur> a cube:MeasureDimension ;
+    schema:name "temperatur" ;
+    schema:description "Temperatur in Grad Celsius" ;
+    schema:disambiguatingDescription "unit: °C" .
