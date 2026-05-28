@@ -1,0 +1,230 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100093/"
+  ex-obs: "https://ld.bs.ch/100093/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+
+  observation_g107_no2:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_g107_no2"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:sensor", "ex-code:g107~iri"]
+      - ["ex-property:pollutant", "ex-code:NO2~iri"]
+      - ["ex-property:RAUM", "ex-code:location~iri"]
+      - ["ex-property:g107_no2", "$(g107_no2)", xsd:decimal]
+
+  observation_g107_o3:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_g107_o3"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:sensor", "ex-code:g107~iri"]
+      - ["ex-property:pollutant", "ex-code:O3~iri"]
+      - ["ex-property:RAUM", "ex-code:location~iri"]
+      - ["ex-property:g107_o3", "$(g107_03)", xsd:decimal]
+
+  observation_g107_pm25:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_g107_pm25"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:sensor", "ex-code:g107~iri"]
+      - ["ex-property:pollutant", "ex-code:PM2_5~iri"]
+      - ["ex-property:RAUM", "ex-code:location~iri"]
+      - ["ex-property:g107_pm25", "$(g107_pm25)", xsd:decimal]
+
+  observation_g125_no2:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_g125_no2"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:sensor", "ex-code:g125~iri"]
+      - ["ex-property:pollutant", "ex-code:NO2~iri"]
+      - ["ex-property:RAUM", "ex-code:location~iri"]
+      - ["ex-property:g125_no2", "$(g125_no2)", xsd:decimal]
+
+  observation_g125_o3:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_g125_o3"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:sensor", "ex-code:g125~iri"]
+      - ["ex-property:pollutant", "ex-code:O3~iri"]
+      - ["ex-property:RAUM", "ex-code:location~iri"]
+      - ["ex-property:g125_o3", "$(g125_o3)", xsd:decimal]
+
+  observation_g125_pm25:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_g125_pm25"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:sensor", "ex-code:g125~iri"]
+      - ["ex-property:pollutant", "ex-code:PM2_5~iri"]
+      - ["ex-property:RAUM", "ex-code:location~iri"]
+      - ["ex-property:g125_pm25", "$(g125_pm25)", xsd:decimal]
+
+  observation_g131_no2:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_g131_no2"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:sensor", "ex-code:g131~iri"]
+      - ["ex-property:pollutant", "ex-code:NO2~iri"]
+      - ["ex-property:RAUM", "ex-code:location~iri"]
+      - ["ex-property:g131_no2", "$(g131_no2)", xsd:decimal]
+
+  observation_g131_o3:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_g131_o3"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:sensor", "ex-code:g131~iri"]
+      - ["ex-property:pollutant", "ex-code:O3~iri"]
+      - ["ex-property:RAUM", "ex-code:location~iri"]
+      - ["ex-property:g131_o3", "$(g131_o3)", xsd:decimal]
+
+  observation_g131_pm25:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_g131_pm25"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:sensor", "ex-code:g131~iri"]
+      - ["ex-property:pollutant", "ex-code:PM2_5~iri"]
+      - ["ex-property:RAUM", "ex-code:location~iri"]
+      - ["ex-property:g131_pm25", "$(g131_pm25)", xsd:decimal]
+
+  sensorCodes:
+    sources:
+      - csvSource
+    s: "ex-code:g107"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "g107"]
+    s2: "ex-code:g125"
+    po2:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "g125"]
+    s3: "ex-code:g131"
+    po3:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "g131"]
+
+  pollutantCodes:
+    sources:
+      - csvSource
+    s: "ex-code:NO2"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "NO2"]
+    s2: "ex-code:O3"
+    po2:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "O3"]
+    s3: "ex-code:PM2_5"
+    po3:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "PM2.5"]
+
+  locationCode:
+    sources:
+      - csvSource
+    s: "ex-code:location"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "St. Johanns-Platz, Feldbergastrasse, Autobahn A2 in der Hard, Gundeldingerstrasse (Basel, Switzerland)"]
+
+  observationSetLink_g107_no2:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_g107_no2~iri"]
+
+  observationSetLink_g107_o3:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_g107_o3~iri"]
+
+  observationSetLink_g107_pm25:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_g107_pm25~iri"]
+
+  observationSetLink_g125_no2:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_g125_no2~iri"]
+
+  observationSetLink_g125_o3:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_g125_o3~iri"]
+
+  observationSetLink_g125_pm25:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_g125_pm25~iri"]
+
+  observationSetLink_g131_no2:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_g131_no2~iri"]
+
+  observationSetLink_g131_o3:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_g131_o3~iri"]
+
+  observationSetLink_g131_pm25:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_g131_pm25~iri"]
