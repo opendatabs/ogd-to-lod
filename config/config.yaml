@@ -29,7 +29,7 @@ sparql:
 
 rml:
   # Base URI pattern for generated resources
-  base_uri: "https://ld.domain.ch/statistics/"
+  base_uri: "${DATASET_BASE_URL}"
   # Use Docker for two-step validation: yarrrml-parser → RMLMapper
   rmlmapper_use_docker: true
   # Docker image for RMLMapper (Tier 2 validation, step 2)
