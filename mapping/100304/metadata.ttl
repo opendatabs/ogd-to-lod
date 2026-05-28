@@ -1,0 +1,42 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100304> a cube:Cube ;
+    schema:name "Gasverbrauch im Versorgungsgebiet der IWB" ;
+    schema:description "Dieser Datensatz beinhaltet die Summe des Gasverbrauchs, die innert Stunden-Intervallen aus dem Netz bezogen wird. Neben dem Kanton Basel-Stadt versorgt IWB auch weitere 29 Gemeinden in den Kantonen Basel-Landschaft, Solothurn und Aargau mit Gas. Diese sind auch im Datensatz enthalten.\n\nDie Gemeinden, die im Versorgungsgebiet enthalten sind, sind:\nAesch BL, Allschwil, Arlesheim, Augst, Basel, Bettingen, Binningen, Birsfelden, Bottmingen, Dornach, Eiken, Ettingen, Frenkendorf, Frick, Füllinsdorf, Gipf-Oberfrick, Lausen, Liestal, Möhlin, Münchenstein, Muttenz, Oberwil, Oeschgen, Pfeffingen, Pratteln, Reinach BL, Rheinfelden, Riehen, Schönenbuch, Therwil, Wallbach" ;
+    schema:publisher "Industrielle Werke Basel" ;
+    dcterms:license "Freie Nutzung. Quellenangabe ist Pflicht. Kommerzielle Nutzung nur mit Bewilligung des Datenlieferanten zulässig." ;
+    schema:keywords "Elektrizität", "Elektro", "Gas", "Kilowattstunden", "Netzlast", "Stadtlast", "Strom", "Stromverbrauch", "Watt" ;
+    cube:observationSet <https://ld.bs.ch/100304/observation-set> .
+
+<https://ld.bs.ch/100304/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "timestamp" ;
+    schema:description "Startzeitpunkt der Messperiode" .
+
+<https://ld.bs.ch/property/weekday> a cube:KeyDimension ;
+    schema:name "weekday" ;
+    schema:description "Wochentag als Zahl (0 = Montag, 1 = Dienstag, etc.)" .
+
+<https://ld.bs.ch/property/dayofyear> a cube:KeyDimension ;
+    schema:name "dayofyear" ;
+    schema:description "Tag innerhalb des Jahres (1. Januar = 1, etc.)" .
+
+<https://ld.bs.ch/property/quarter> a cube:KeyDimension ;
+    schema:name "quarter" ;
+    schema:description "Quartal des Jahres (1, 2, 3, 4)" .
+
+<https://ld.bs.ch/property/weekofyear> a cube:KeyDimension ;
+    schema:name "weekofyear" ;
+    schema:description "Woche (1, 2, 3, etc.)" .
+
+<https://ld.bs.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "spatial_coverage" .
+
+<https://ld.bs.ch/property/value> a cube:MeasureDimension ;
+    schema:name "value" ;
+    schema:description "Gasverbrauch innerhalb des Stundenintervalls" ;
+    schema:disambiguatingDescription "unit: kWh" .
