@@ -1,0 +1,72 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100272/"
+  ex-obs: "https://ld.bs.ch/100272/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  # Observations
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_$(methode)"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:RAUM", "ex-code:birs_muenchenstein_hofmatt~iri"]
+      - ["ex-property:methode", "ex-code:$(methode)~iri"]
+      - ["ex-property:ausgegeben_an", "$(ausgegeben_an)", xsd:dateTime]
+      - ["ex-property:meteolauf", "$(meteolauf)", xsd:dateTime]
+      - ["ex-property:gemessene_werten_bis", "$(gemessene_werten_bis)", xsd:dateTime]
+      - ["ex-property:wasserstand", "$(wasserstand)", xsd:decimal]
+      - ["ex-property:abfluss", "$(abfluss)", xsd:decimal]
+      - ["ex-property:h_min", "$(h_min)", xsd:decimal]
+      - ["ex-property:h_p25", "$(h_p25)", xsd:decimal]
+      - ["ex-property:h_p50", "$(h_p50)", xsd:decimal]
+      - ["ex-property:h_p75", "$(h_p75)", xsd:decimal]
+      - ["ex-property:h_max", "$(h_max)", xsd:decimal]
+      - ["ex-property:q_min", "$(q_min)", xsd:decimal]
+      - ["ex-property:q_p25", "$(q_p25)", xsd:decimal]
+      - ["ex-property:q_p50", "$(q_p50)", xsd:decimal]
+      - ["ex-property:q_p75", "$(q_p75)", xsd:decimal]
+      - ["ex-property:q_max", "$(q_max)", xsd:decimal]
+
+  # Dimension: Methode code values
+  methodeCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(methode)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:inDefinedTermSet, "ex-code:MethodeSet~iri"]
+      - [schema:name, "$(methode)"]
+
+  # Fixed code for spatial dimension
+  raumCode:
+    sources:
+      - csvSource
+    s: "ex-code:birs_muenchenstein_hofmatt"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:inDefinedTermSet, "ex-code:Orte~iri"]
+      - [schema:name, "Birs - Münchenstein, Hofmatt (ca. Brücke Baselstrasse)"]
+
+  # ObservationSet linkage
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_$(methode)~iri"]
