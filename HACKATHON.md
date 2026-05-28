@@ -50,7 +50,6 @@ metadata are fetched automatically:
 ```bash
 docker compose run --rm ogd-to-lod \
     --dataset-id 100051 \
-    --output-folder weather-binningen-hourly \
     --local
 ```
 
