@@ -1,0 +1,69 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100227/"
+  ex-obs: "https://ld.bs.ch/100227/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(jahr)_$(monat)"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(datum)", xsd:gYearMonth]
+      - ["ex-property:RAUM", "ex-code:BS_BINNINGEN~iri"]
+      - ["ex-property:jahr", "$(jahr)", xsd:gYear]
+      - ["ex-property:monat", "$(monat)", xsd:string]
+      - ["ex-property:frosttag", "$(frosttag)", xsd:integer]
+      - ["ex-property:eistag", "$(eistag)", xsd:integer]
+      - ["ex-property:sommertag", "$(sommertag)", xsd:integer]
+      - ["ex-property:hitzetag", "$(hitzetag)", xsd:integer]
+      - ["ex-property:sonnenlos", "$(sonnenlos)", xsd:integer]
+      - ["ex-property:regen1", "$(regen1)", xsd:integer]
+      - ["ex-property:regen2", "$(regen2)", xsd:integer]
+      - ["ex-property:regen3", "$(regen3)", xsd:integer]
+      - ["ex-property:schneefall", "$(schneefall)", xsd:integer]
+      - ["ex-property:schneedecke", "$(schneedecke)", xsd:integer]
+      - ["ex-property:reif", "$(reif)", xsd:integer]
+      - ["ex-property:nebel", "$(nebel)", xsd:integer]
+      - ["ex-property:gewitter1", "$(gewitter1)", xsd:integer]
+      - ["ex-property:gewitter2", "$(gewitter2)", xsd:decimal]
+      - ["ex-property:hagel", "$(hagel)", xsd:integer]
+      - ["ex-property:hell", "$(hell)", xsd:integer]
+      - ["ex-property:trueb", "$(trueb)", xsd:integer]
+      - ["ex-property:wind1", "$(wind1)", xsd:integer]
+      - ["ex-property:wind2", "$(wind2)", xsd:integer]
+      - ["ex-property:heiztage", "$(heiztage)", xsd:decimal]
+  raumCode:
+    sources:
+      - csvSource
+    s: "ex-code:BS_BINNINGEN"
+    po:
+      - [a, schema:DefinedTerm]
+      - ["schema:name", "Basel-Binningen am Observatorium St. Margarethen"]
+  monatCode:
+    sources:
+      - csvSource
+    s: "ex-code:$(monat)"
+    po:
+      - [a, schema:DefinedTerm]
+      - ["schema:name", "$(monat)"]
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(jahr)_$(monat)~iri"]
