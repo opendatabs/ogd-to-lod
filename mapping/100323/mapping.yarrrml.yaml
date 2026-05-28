@@ -1,0 +1,48 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100323/"
+  ex-obs: "https://ld.bs.ch/100323/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(startzeitpunkt)_$(endezeitpunkt)"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT_START", "$(startzeitpunkt)", xsd:dateTime]
+      - ["ex-property:ZEIT_ENDE", "$(endezeitpunkt)", xsd:dateTime]
+      - ["ex-property:rus_w_o_ms_tr", "$(rus_w_o_ms_tr)", xsd:decimal]
+  zeitStartCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(startzeitpunkt)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(startzeitpunkt)"]
+  zeitEndeCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(endezeitpunkt)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(endezeitpunkt)"]
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(startzeitpunkt)_$(endezeitpunkt)~iri"]
