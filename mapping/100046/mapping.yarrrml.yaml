@@ -1,0 +1,46 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100046/"
+  ex-obs: "https://ld.bs.ch/100046/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  observations:
+    sources:
+      - csvSource
+    s: ex-obs:$(startzeitpunkt)_$(endezeitpunkt)
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT_START", "$(startzeitpunkt)", xsd:dateTime]
+      - ["ex-property:ZEIT_ENDE", "$(endezeitpunkt)", xsd:dateTime]
+      - ["ex-property:RAUM", "ex-code:spatial_coverage_rues~iri"]
+      - ["ex-property:rus_w_o_s3_lf", "$(rus_w_o_s3_lf)", xsd:decimal]
+      - ["ex-property:rus_w_o_s3_o2", "$(rus_w_o_s3_o2)", xsd:decimal]
+      - ["ex-property:rus_w_o_s3_ph", "$(rus_w_o_s3_ph)", xsd:decimal]
+      - ["ex-property:rus_w_o_s3_te", "$(rus_w_o_s3_te)", xsd:decimal]
+  # DefinedTerm for static spatial coverage
+  spatialCoverageCode:
+    sources:
+      - csvSource
+    s: ex-code:spatial_coverage_rues
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "Rheinüberwachungsstation Weil am Rhein (Koordinaten: 611740 / 272310)"]
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(startzeitpunkt)_$(endezeitpunkt)~iri"]
