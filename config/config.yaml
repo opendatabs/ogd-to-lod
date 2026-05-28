@@ -21,12 +21,6 @@ azure:
     price_per_1m_output_tokens: 8.08   # CHF per 1M output tokens
     price_per_1m_cached_tokens: 0.10   # CHF per 1M cached tokens
 
-sparql:
-  # Optional SPARQL linker (EARLY STAGE / experimental): queries an endpoint for
-  # existing cube.link properties and DefinedTerms to reuse. Disabled by default —
-  # uncomment and set an endpoint to enable. With no endpoint the lookup is skipped.
-  # endpoint: "http://localhost:3030/test/query"
-
 rml:
   # Base URI pattern for generated resources
   base_uri: "${DATASET_BASE_URL}"
