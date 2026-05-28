@@ -22,8 +22,10 @@ azure:
     price_per_1m_cached_tokens: 0.10   # CHF per 1M cached tokens
 
 sparql:
-  # Optional: SPARQL endpoint for querying existing dimensions (V1)
-  endpoint: "http://localhost:3030/test/query"
+  # Optional SPARQL linker (EARLY STAGE / experimental): queries an endpoint for
+  # existing cube.link properties and DefinedTerms to reuse. Disabled by default —
+  # uncomment and set an endpoint to enable. With no endpoint the lookup is skipped.
+  # endpoint: "http://localhost:3030/test/query"
 
 rml:
   # Base URI pattern for generated resources
