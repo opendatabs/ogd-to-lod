@@ -1,0 +1,47 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100294> a cube:Cube ;
+    schema:name "Wetterstation Rosental Mitte" ;
+    schema:description "Die Wetterstation wurde im Rahmen der «Transformation Rosental Mitte» installiert. Das Areal soll dabei etappenweise für die Öffentlichkeit zugänglich gemacht und zu einem vollwertigen Stadtteil entwickelt werden. Bedingt durch die frühere Nutzung des Rosental Areals – auch bekannt als die Wiege der Basler Chemie - ist der Untergrund mit Schadstoffen belastet. Während der Tiefbauarbeiten überwacht das Lufthygieneamt beider Basel (LHA) die Immissionen mittels Messungen der Luft. Die Wetterstation zeichnet während der Überwachung u.a. Windrichtungen und Windgeschwindigkeiten auf, die bei der Interpretation der Immissionsmessungen hilfreich sind." ;
+    schema:publisher "Amt für Umwelt und Energie" ;
+    dcterms:license "CC BY 4.0" ;
+    schema:keywords "Luftfeuchtigkeit", "Niederschlag", "Regen", "Strahlung", "Temperatur", "Wetter", "Wind" ;
+    cube:observationSet <https://ld.bs.ch/100294/observation-set> .
+
+<https://ld.bs.ch/100294/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "timestamp" ;
+    schema:description "Zeitstempel" .
+
+<https://ld.bs.ch/property/precipitation> a cube:MeasureDimension ;
+    schema:name "precipitation" ;
+    schema:description "Total der Niederschläge innerhalb der letzten Stunde" ;
+    schema:disambiguatingDescription "unit: mm" .
+
+<https://ld.bs.ch/property/relativehumidityhc> a cube:MeasureDimension ;
+    schema:name "relativehumidityhc" ;
+    schema:description "Luftfeuchtigkeit bezieht sich auf die Menge an Wassertröpfchen oder Wasserdampf, die in der Luft vorhanden sind." ;
+    schema:disambiguatingDescription "unit: %" .
+
+<https://ld.bs.ch/property/solarradiation> a cube:MeasureDimension ;
+    schema:name "solarradiation" ;
+    schema:description "Globalstrahlung ist die Menge an Sonnenenergie, die auf eine horizontale Fläche in einer bestimmten Zeitspanne (normalerweise in Stunden) auftrifft." .
+
+<https://ld.bs.ch/property/airtemperaturehc> a cube:MeasureDimension ;
+    schema:name "airtemperaturehc" ;
+    schema:description "Lufttemperatur bezieht sich auf die Masseinheit der Wärmeenergie, die in der Luft vorhanden ist." ;
+    schema:disambiguatingDescription "unit: °C" .
+
+<https://ld.bs.ch/property/windspeedultrasonic> a cube:MeasureDimension ;
+    schema:name "windspeedultrasonic" ;
+    schema:description "Windgeschwindigkeit bezieht sich auf die Geschwindigkeit, mit der sich Luft in horizontaler Richtung bewegt." ;
+    schema:disambiguatingDescription "unit: m/s" .
+
+<https://ld.bs.ch/property/winddirultrasonic> a cube:MeasureDimension ;
+    schema:name "winddirultrasonic" ;
+    schema:description "Windrichtung bezieht sich auf die Richtung, aus der der Wind weht. Sie wird normalerweise in Grad gemessen, wobei 0 Grad für Nord, 90 Grad für Ost, 180 Grad für Süd und 270 Grad für West steht." ;
+    schema:disambiguatingDescription "unit: °" .
