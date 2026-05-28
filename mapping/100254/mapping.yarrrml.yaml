@@ -1,0 +1,53 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100254/"
+  ex-obs: "https://ld.bs.ch/100254/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(date)_$(jahr)"
+    po:
+      - ["a", "cube:Observation"]
+      - ["ex-property:ZEIT", "$(date)", xsd:date]
+      - ["ex-property:JAHR", "$(jahr)", xsd:gYear]
+      - ["ex-property:RAUM", "ex-code:Basel-Binningen~iri"]
+      - ["ex-property:gre000d0", "$(gre000d0)", xsd:decimal]
+      - ["ex-property:hto000d0", "$(hto000d0)", xsd:integer]
+      - ["ex-property:nto000d0", "$(nto000d0)", xsd:decimal]
+      - ["ex-property:prestad0", "$(prestad0)", xsd:decimal]
+      - ["ex-property:rre150d0", "$(rre150d0)", xsd:decimal]
+      - ["ex-property:sre000d0", "$(sre000d0)", xsd:integer]
+      - ["ex-property:tre200d0", "$(tre200d0)", xsd:decimal]
+      - ["ex-property:tre200dn", "$(tre200dn)", xsd:decimal]
+      - ["ex-property:tre200dx", "$(tre200dx)", xsd:decimal]
+
+  # Static spatial dimension code for Basel-Binningen
+  locationCode:
+    sources:
+      - csvSource
+    s: "ex-code:Basel-Binningen"
+    po:
+      - ["a", "schema:DefinedTerm"]
+      - ["schema:name", "Basel-Binningen"]
+
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - ["cube:observation", "ex-obs:$(date)_$(jahr)~iri"]
