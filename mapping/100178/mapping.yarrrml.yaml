@@ -1,0 +1,205 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100178/"
+  ex-obs: "https://ld.bs.ch/100178/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  # A2 Hard NO2 observation
+  obs_a2hard_no2:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_a2hard_no2"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:STATION", "ex-code:a2hard~iri"]
+      - ["ex-property:RAUM", "ex-code:Basel-Stadt_Schweiz~iri"]
+      - ["ex-property:NO2", "$(a2hard_no2)", xsd:decimal]
+  # A2 Hard O3 observation
+  obs_a2hard_o3:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_a2hard_o3"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:STATION", "ex-code:a2hard~iri"]
+      - ["ex-property:RAUM", "ex-code:Basel-Stadt_Schweiz~iri"]
+      - ["ex-property:O3", "$(a2hard_o3)", xsd:decimal]
+  # A2 Hard PM2.5 observation
+  obs_a2hard_pm25:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_a2hard_pm25"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:STATION", "ex-code:a2hard~iri"]
+      - ["ex-property:RAUM", "ex-code:Basel-Stadt_Schweiz~iri"]
+      - ["ex-property:PM2_5", "$(a2hard_pm25)", xsd:decimal]
+  # Feldbergstrasse NO2 observation
+  obs_feldbergstr2_no2:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_feldbergstr2_no2"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:STATION", "ex-code:feldbergstr2~iri"]
+      - ["ex-property:RAUM", "ex-code:Basel-Stadt_Schweiz~iri"]
+      - ["ex-property:NO2", "$(feldbergstr2_no2)", xsd:decimal]
+  # Feldbergstrasse O3 observation
+  obs_feldbergstr2_o3:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_feldbergstr2_o3"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:STATION", "ex-code:feldbergstr2~iri"]
+      - ["ex-property:RAUM", "ex-code:Basel-Stadt_Schweiz~iri"]
+      - ["ex-property:O3", "$(feldbergstr2_o3)", xsd:decimal]
+  # Feldbergstrasse PM2.5 observation
+  obs_feldbergstr2_pm25:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_feldbergstr2_pm25"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:STATION", "ex-code:feldbergstr2~iri"]
+      - ["ex-property:RAUM", "ex-code:Basel-Stadt_Schweiz~iri"]
+      - ["ex-property:PM2_5", "$(feldbergstr2_pm25)", xsd:decimal]
+  # St. Johann2 NO2 observation
+  obs_stjohann2_no2:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_stjohann2_no2"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:STATION", "ex-code:stjohann2~iri"]
+      - ["ex-property:RAUM", "ex-code:Basel-Stadt_Schweiz~iri"]
+      - ["ex-property:NO2", "$(stjohann2_no2)", xsd:decimal]
+  # St. Johann2 O3 observation
+  obs_stjohann2_o3:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_stjohann2_o3"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:STATION", "ex-code:stjohann2~iri"]
+      - ["ex-property:RAUM", "ex-code:Basel-Stadt_Schweiz~iri"]
+      - ["ex-property:O3", "$(stjohann2_o3)", xsd:decimal]
+  # St. Johann2 PM2.5 observation
+  obs_stjohann2_pm25:
+    sources:
+      - csvSource
+    s: "ex-obs:$(timestamp)_stjohann2_pm25"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(timestamp)", xsd:dateTime]
+      - ["ex-property:STATION", "ex-code:stjohann2~iri"]
+      - ["ex-property:RAUM", "ex-code:Basel-Stadt_Schweiz~iri"]
+      - ["ex-property:PM2_5", "$(stjohann2_pm25)", xsd:decimal]
+
+  # Code definitions for stations
+  code_station_a2hard:
+    sources:
+      - csvSource
+    s: "ex-code:a2hard"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "A2 Hard"]
+  code_station_feldbergstr2:
+    sources:
+      - csvSource
+    s: "ex-code:feldbergstr2"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "Feldbergstrasse"]
+  code_station_stjohann2:
+    sources:
+      - csvSource
+    s: "ex-code:stjohann2"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "St. Johanns-Platz"]
+  # Code definition for Raum (spatial_coverage)
+  code_raum_baselstadt:
+    sources:
+      - csvSource
+    s: "ex-code:Basel-Stadt_Schweiz"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "Basel-Stadt, Schweiz"]
+
+  # Link all observations to the observation set
+  obsSetLink_a2hard_no2:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_a2hard_no2~iri"]
+  obsSetLink_a2hard_o3:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_a2hard_o3~iri"]
+  obsSetLink_a2hard_pm25:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_a2hard_pm25~iri"]
+  obsSetLink_feldbergstr2_no2:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_feldbergstr2_no2~iri"]
+  obsSetLink_feldbergstr2_o3:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_feldbergstr2_o3~iri"]
+  obsSetLink_feldbergstr2_pm25:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_feldbergstr2_pm25~iri"]
+  obsSetLink_stjohann2_no2:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_stjohann2_no2~iri"]
+  obsSetLink_stjohann2_o3:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_stjohann2_o3~iri"]
+  obsSetLink_stjohann2_pm25:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(timestamp)_stjohann2_pm25~iri"]
