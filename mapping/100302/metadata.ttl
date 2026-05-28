@@ -1,0 +1,128 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100302> a cube:Cube ;
+    schema:name "Abwassermonitoring: Influenza und RSV" ;
+    schema:description "Der Datensatz zeigt den 7-Tage-Median der RNA-Kopien des angegebenen Virus jeweils pro Tag und 100‘000 Personen im Abwasser der Abwasserreinigungs-Anlage (ARA) Basel sowie den 7-Tage-Median der entsprechenden Fallzahlen. Der Datensatz wird i.d.R. jeweils dienstags mit den Daten bis vorangegangenem Sonntag aktualisiert. In einzelnen Wochen kann es zu Verschiebungen kommen.\n\nMessung\n\nDie ProRheno AG (Betreiber der ARA Basel) entnimmt jeweils eine 24h-Probe des Rohabwassers, welche durch das Kantonale Laboratorium Basel-Stadt (KL BS) auf RNA der angegebenen Viren untersucht wird. Die Messmethodik wurde dabei seit Beginn des Monitorings nicht verändert: siehe Publikation https://smw.ch/index.php/smw/article/view/3226. Die Plausibilität der Werte wird laufend anhand interner Qualitätsparameter überprüft. Das Untersuchungsgebiet umfasst das Einzugsgebiet der ARA Basel, welches sich hauptsächlich aus dem Kanton Basel-Stadt sowie den Gemeinden Allschwil, Binningen, Birsfelden, Bottmingen, Oberwil und Schönenbuch (alle Kanton Baselland) zusammensetzt. Bis Ende Juni 2023 wurden die Messwerte des KL BS auch auf dem Abwasser-Dashboard des BAG https://www.covid19.admin.ch/de/epidemiologic/waste-water?wasteWaterFacility=270101 dargestellt. Ab Juli 2023 werden auf dieser Seite die Messwerte der EAWAG https://www.eawag.ch/de/abteilung/sww/projekte/sars-cov2-im-abwasser/ publiziert, welche ebenfalls das Rohabwasser der ARA Basel untersucht. Die vom KL BS und der EAWAG verwendeten Untersuchungsmethoden sind sehr ähnlich aber nicht identisch.\n\nIn den Zeiträumen 29.4. bis 1.8.2022 (außer 1.6.2022 und 5.6.2022) und 30.5.2023 bis 3.9.2023 wurden keine Abwasserproben auf Influenza und RSV untersucht.\n\nFallzahlen\n\nDie Fallzahlen entsprechen der Anzahl der bestätigten und dem Kanton gemeldeten Fälle der dargestellten Infektionen im Einzugsgebiet der ARA Basel.\n\nInterpretation der Kurven\n\nBeim Monitoring von Viren im Abwasser geht es in erster Linie darum, Trends zu erkennen (insbesondere natürlich die Zunahme eines zirkulierenden Virus). Es ist nicht möglich, daraus eine bestimmte Fallzahl oder den Schweregrad einer Infektion abzuleiten. Ein Vergleich des Kurvenausschlags (Höhe der Peaks) zu verschiedenen Zeitpunkten ist kaum möglich, da z.B. unterschiedliche Virusvarianten zu unterschiedlichen Virusmengen pro Fall führen. Unterschiedliche Virusvarianten können auch die Symptomatik beeinflussen, so dass z.B. Infektionen bei Menschen spurlos verlaufen, aber dennoch Viren ins Abwasser abgegeben werden." ;
+    schema:publisher "Kantonales Laboratorium" ;
+    dcterms:license "CC BY 4.0" ;
+    schema:keywords "Abwasser", "Grippe", "Influenza", "Kanalisation", "Kläranlage", "Krankheit", "RSV" ;
+    cube:observationSet <https://ld.bs.ch/100302/observation-set> .
+
+<https://ld.bs.ch/100302/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "datum" .
+
+<https://ld.bs.ch/property/kw> a cube:KeyDimension ;
+    schema:name "kw" .
+
+<https://ld.bs.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "spatial_coverage" .
+
+<https://ld.bs.ch/property/sample_ba_nr> a cube:KeyDimension ;
+    schema:name "sample_ba_nr" .
+
+<https://ld.bs.ch/property/infa_gc_pcr> a cube:MeasureDimension ;
+    schema:name "infa_gc_pcr" .
+
+<https://ld.bs.ch/property/infb_gc_pcr> a cube:MeasureDimension ;
+    schema:name "infb_gc_pcr" .
+
+<https://ld.bs.ch/property/rsv_gc_pcr> a cube:MeasureDimension ;
+    schema:name "rsv_gc_pcr" .
+
+<https://ld.bs.ch/property/infa_gc_l> a cube:MeasureDimension ;
+    schema:name "infa_gc_l" .
+
+<https://ld.bs.ch/property/infb_gc_l> a cube:MeasureDimension ;
+    schema:name "infb_gc_l" .
+
+<https://ld.bs.ch/property/rsv_gc_l> a cube:MeasureDimension ;
+    schema:name "rsv_gc_l" .
+
+<https://ld.bs.ch/property/infa_gc_l_7_d_median> a cube:MeasureDimension ;
+    schema:name "infa_gc_l_7_d_median" .
+
+<https://ld.bs.ch/property/infb_gc_l_7_d_median> a cube:MeasureDimension ;
+    schema:name "infb_gc_l_7_d_median" .
+
+<https://ld.bs.ch/property/rsv_gc_l_7_d_median> a cube:MeasureDimension ;
+    schema:name "rsv_gc_l_7_d_median" .
+
+<https://ld.bs.ch/property/infa_gc_100_000_p> a cube:MeasureDimension ;
+    schema:name "infa_gc_100_000_p" .
+
+<https://ld.bs.ch/property/infb_gc_100_000_p> a cube:MeasureDimension ;
+    schema:name "infb_gc_100_000_p" .
+
+<https://ld.bs.ch/property/rsv_gc_100_000_p> a cube:MeasureDimension ;
+    schema:name "rsv_gc_100_000_p" .
+
+<https://ld.bs.ch/property/infa_gc_100_000_p_7_d_median> a cube:MeasureDimension ;
+    schema:name "infa_gc_100_000_p_7_d_median" .
+
+<https://ld.bs.ch/property/infb_gc_100_000_p_7_d_median> a cube:MeasureDimension ;
+    schema:name "infb_gc_100_000_p_7_d_median" .
+
+<https://ld.bs.ch/property/rsv_gc_100_000_p_7_d_median> a cube:MeasureDimension ;
+    schema:name "rsv_gc_100_000_p_7_d_median" .
+
+<https://ld.bs.ch/property/infa_gc_pmmov> a cube:MeasureDimension ;
+    schema:name "infa_gc_pmmov" .
+
+<https://ld.bs.ch/property/infb_gc_pmmov> a cube:MeasureDimension ;
+    schema:name "infb_gc_pmmov" .
+
+<https://ld.bs.ch/property/rsv_gc_pmmov> a cube:MeasureDimension ;
+    schema:name "rsv_gc_pmmov" .
+
+<https://ld.bs.ch/property/infa_gc_pmmov_7_d_median> a cube:MeasureDimension ;
+    schema:name "infa_gc_pmmov_7_d_median" .
+
+<https://ld.bs.ch/property/infb_gc_pmmov_7_d_median> a cube:MeasureDimension ;
+    schema:name "infb_gc_pmmov_7_d_median" .
+
+<https://ld.bs.ch/property/rsv_gc_pmmov_7_d_median> a cube:MeasureDimension ;
+    schema:name "rsv_gc_pmmov_7_d_median" .
+
+<https://ld.bs.ch/property/anz_pos_a_bs> a cube:MeasureDimension ;
+    schema:name "anz_pos_a_bs" .
+
+<https://ld.bs.ch/property/anz_pos_a_h1_bs> a cube:MeasureDimension ;
+    schema:name "anz_pos_a_h1_bs" .
+
+<https://ld.bs.ch/property/anz_pos_a_h1n1_bs> a cube:MeasureDimension ;
+    schema:name "anz_pos_a_h1n1_bs" .
+
+<https://ld.bs.ch/property/anz_pos_a_h3_bs> a cube:MeasureDimension ;
+    schema:name "anz_pos_a_h3_bs" .
+
+<https://ld.bs.ch/property/anz_pos_b_bs> a cube:MeasureDimension ;
+    schema:name "anz_pos_b_bs" .
+
+<https://ld.bs.ch/property/anz_pos_a_bl> a cube:MeasureDimension ;
+    schema:name "anz_pos_a_bl" .
+
+<https://ld.bs.ch/property/anz_pos_b_bl> a cube:MeasureDimension ;
+    schema:name "anz_pos_b_bl" .
+
+<https://ld.bs.ch/property/anz_pos_all_bl> a cube:MeasureDimension ;
+    schema:name "anz_pos_all_bl" .
+
+<https://ld.bs.ch/property/infa_bs_bl> a cube:MeasureDimension ;
+    schema:name "infa_bs_bl" .
+
+<https://ld.bs.ch/property/infb_bs_bl> a cube:MeasureDimension ;
+    schema:name "infb_bs_bl" .
+
+<https://ld.bs.ch/property/7t_median_infa> a cube:MeasureDimension ;
+    schema:name "7t_median_infa" .
+
+<https://ld.bs.ch/property/7t_median_infb> a cube:MeasureDimension ;
+    schema:name "7t_median_infb" .
+
+<https://ld.bs.ch/property/kw_anz_pos_rsv_usb> a cube:MeasureDimension ;
+    schema:name "kw_anz_pos_rsv_usb" .
