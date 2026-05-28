@@ -86,7 +86,7 @@ services:
       - "8080:8080"
     environment:
       - SPARQL_ENDPOINT_URL=http://fuseki:3030/test/query
-      - DATASET_BASE_URL=${DATASET_BASE_URL:-https://ld.domain.ch}
+      - DATASET_BASE_URL=${DATASET_BASE_URL:-https://ld.bs.ch}
     restart: unless-stopped
 
 volumes:
