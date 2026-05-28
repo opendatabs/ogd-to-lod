@@ -1,0 +1,45 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100236/"
+  ex-obs: "https://ld.bs.ch/100236/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(Zeitstempel)_Birs_Hofmatt"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(Zeitstempel)", xsd:dateTime]
+      - ["ex-property:RAUM", "ex-code:Birs_Hofmatt~iri"]
+      - ["ex-property:Abflussmenge", "$(Abflussmenge)", xsd:decimal]
+      - ["ex-property:Wasserstand", "$(Wasserstand)", xsd:decimal]
+      - ["ex-property:Temperatur", "$(Temperatur)", xsd:decimal]
+
+  raumCodes:
+    sources:
+      - csvSource
+    s: "ex-code:Birs_Hofmatt"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "Birs bei \"Hofmatt\" in Münchenstein etwa auf Höhe der Brücke \"Baselstrasse\""]
+
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(Zeitstempel)_Birs_Hofmatt~iri"]
