@@ -1,0 +1,61 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100388/"
+  ex-obs: "https://ld.bs.ch/100388/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(name)_$(zeitpunkt_job)"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:name", "ex-code:$(name)~iri"]
+      - ["ex-property:ZEIT", "$(zeitpunkt_job)", xsd:dateTime]
+      - ["ex-property:RAUM", "ex-code:$(koordinaten)~iri"]
+      - ["ex-property:url_sportanlage", "ex-code:$(url_sportanlage)~iri"]
+      - ["ex-property:temperatur", "$(temperatur)", xsd:integer]
+
+  nameCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(name)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(name)"]
+
+  koordinatenCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(koordinaten)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(koordinaten)"]
+
+  url_sportanlageCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(url_sportanlage)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(url_sportanlage)"]
+
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(name)_$(zeitpunkt_job)~iri"]
