@@ -1,11 +1,13 @@
 """CLI entry point for OGD to LOD tool."""
 
 import argparse
+import os
 import sys
 
 from ogd_to_lod.ai import RequestLimitReached, TokenUsage
 from ogd_to_lod.config import load_config
 from ogd_to_lod.graph import FlowState, MappingFlow
+from ogd_to_lod.huwise_setup import DatasetSetupError, prepare_dataset_inputs
 from ogd_to_lod.logging import get_logger
 
 logger = get_logger(__name__)
@@ -100,10 +102,17 @@ def main() -> int:
     parser.add_argument(
         "--output-folder",
         "-o",
-        required=True,
         help=(
             "Folder name within the mappings parent directory where the CSV "
-            "and YARRRML files will be pushed (required)"
+            "and YARRRML files will be pushed. Required for csv_path mode; "
+            "defaults to dataset id for --dataset-id mode"
+        ),
+    )
+    parser.add_argument(
+        "--dataset-id",
+        help=(
+            "Dataset identifier to bootstrap CSV and metadata from Huwise API. "
+            "Cannot be combined with csv_path or --context"
         ),
     )
     parser.add_argument(
@@ -130,15 +139,65 @@ def main() -> int:
     print("OGD to LOD - RML Mapping Tool")
     print(f"Configuration loaded from: {args.config}")
 
-    if not args.csv_path:
+    if args.dataset_id and args.csv_path:
+        print(
+            "Error: csv_path and --dataset-id are mutually exclusive",
+            file=sys.stderr,
+        )
+        return 1
+    if args.dataset_id and args.context_paths:
+        print(
+            "Error: --context cannot be used with --dataset-id",
+            file=sys.stderr,
+        )
+        return 1
+
+    if not args.csv_path and not args.dataset_id:
         print("\nUsage: ogd-to-lod <csv_path> [--context FILE ...]")
+        print("   or: ogd-to-lod --dataset-id <id> [--output-folder FOLDER]")
         print("Run 'ogd-to-lod --help' for more information.")
         return 0
 
-    print(f"\nCSV file: {args.csv_path}")
-    if args.context_paths:
-        for cp in args.context_paths:
-            print(f"Context file: {cp}")
+    csv_path = args.csv_path
+    context_paths = args.context_paths or []
+    output_folder = args.output_folder
+
+    if args.dataset_id:
+        output_folder = output_folder or args.dataset_id
+        huwise_domain = os.environ.get("HUWISE_DOMAIN", "").strip()
+        if not huwise_domain:
+            print(
+                "Error: HUWISE_DOMAIN must be set when using --dataset-id",
+                file=sys.stderr,
+            )
+            return 1
+        normalized_domain = huwise_domain
+        if normalized_domain.startswith("https://"):
+            normalized_domain = normalized_domain[len("https://"):]
+        elif normalized_domain.startswith("http://"):
+            normalized_domain = normalized_domain[len("http://"):]
+        normalized_domain = normalized_domain.strip("/")
+        base_url = f"https://{normalized_domain}/api/explore/v2.1"
+        try:
+            setup = prepare_dataset_inputs(dataset_id=args.dataset_id, base_url=base_url)
+        except DatasetSetupError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
+        csv_path = setup.csv_path
+        context_paths = setup.context_paths
+        print(f"\nDataset id: {args.dataset_id}")
+        print(f"Setup directory: {setup.setup_dir}")
+    else:
+        if not output_folder:
+            print(
+                "Error: --output-folder is required when csv_path is provided",
+                file=sys.stderr,
+            )
+            return 1
+
+    print(f"\nCSV file: {csv_path}")
+    for cp in context_paths:
+        print(f"Context file: {cp}")
 
     # Start the mapping flow
     try:
@@ -149,10 +208,10 @@ def main() -> int:
         flow.ai_service.register_token_callback(token_callback)
 
         state = flow.start(
-            csv_path=args.csv_path,
-            context_paths=args.context_paths or [],
+            csv_path=csv_path,
+            context_paths=context_paths,
             base_uri=args.base_uri,
-            output_folder=args.output_folder,
+            output_folder=output_folder,
             local_output=args.local,
         )
     except Exception as e:
