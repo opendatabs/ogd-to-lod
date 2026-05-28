@@ -1,0 +1,26 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100187> a cube:Cube ;
+    schema:name "Coronavirus (COVID-19): SARS-CoV-2 im Abwasser und positiv auf SARS-CoV-2 getestete Personen" ;
+    schema:description "Der Datensatz zeigt den 7-Tage-Median der RNA-Kopien des angegebenen Virus jeweils pro Tag und 100‘000 Personen im Abwasser der Abwasserreinigungs-Anlage (ARA) Basel sowie den 7-Tage-Median der entsprechenden Fallzahlen. Der Datensatz wird i.d.R. jeweils dienstags mit den Daten bis vorangegangenem Sonntag aktualisiert. In einzelnen Wochen kann es zu Verschiebungen kommen. Die ProRheno AG (Betreiber der ARA Basel) entnimmt jeweils eine 24h-Probe des Rohabwassers, welche durch das Kantonale Laboratorium Basel-Stadt (KL BS) auf RNA der angegebenen Viren untersucht wird. Die Messmethodik wurde dabei seit Beginn des Monitorings nicht verändert: siehe Publikation https://smw.ch/index.php/smw/article/view/3226. Die Plausibilität der Werte wird laufend anhand interner Qualitätsparameter überprüft. Das Untersuchungsgebiet umfasst das Einzugsgebiet der ARA Basel, welches sich hauptsächlich aus dem Kanton Basel-Stadt sowie den Gemeinden Allschwil, Binningen, Birsfelden, Bottmingen, Oberwil und Schönenbuch (alle Kanton Baselland) zusammensetzt. Bis Ende Juni 2023 wurden die Messwerte des KL BS auch auf dem Abwasser-Dashboard des BAG https://www.covid19.admin.ch/de/epidemiologic/waste-water?wasteWaterFacility=270101 dargestellt. Ab Juli 2023 werden auf dieser Seite die Messwerte der EAWAG https://www.eawag.ch/de/abteilung/sww/projekte/sars-cov2-im-abwasser/ publiziert, welche ebenfalls das Rohabwasser der ARA Basel untersucht. Die vom KL BS und der EAWAG verwendeten Untersuchungsmethoden sind sehr ähnlich aber nicht identisch. Aus diesem Grund kann es zu Abweichungen kommen. Die Messungen werden unabhängig von der EAWAG durch das KL BS weitergeführt, um zeitnähere Messwerte, mit zusätzlichen Normierungsfaktoren und die Flexibilität zur Integration weiterer Analyte zu erhalten. Hinweis: Die ursprünglich dargestellten Werte vom 22.03. bis 01.10.2023 mussten aufgrund einer falschen Einstellung in der Messgerätesoftware, die Einfluss auf die RNA-Quantifizierung hat, nach unten korrigiert werden und sind nun korrekt dargestellt. Die Fallzahlen entsprechen der Anzahl der bestätigten und dem Kanton gemeldeten Fälle der dargestellten Infektionen im Einzugsgebiet der ARA Basel. Beim Monitoring von Viren im Abwasser geht es in erster Linie darum, Trends zu erkennen (insbesondere natürlich die Zunahme eines zirkulierenden Virus). Es ist nicht möglich, daraus eine bestimmte Fallzahl oder den Schweregrad einer Infektion abzuleiten. Ein Vergleich des Kurvenausschlags (Höhe der Peaks) zu verschiedenen Zeitpunkten ist kaum möglich, da z.B. unterschiedliche Virusvarianten zu unterschiedlichen Virusmengen pro Fall führen. Unterschiedliche Virusvarianten können auch die Symptomatik beeinflussen, so dass z.B. Infektionen bei Menschen spurlos verlaufen, aber dennoch Viren ins Abwasser abgegeben werden." ;
+    schema:publisher "Kantonales Laboratorium" ;
+    dcterms:license "CC BY 4.0" ;
+    schema:keywords "Abwasser", "COVID-19", "Corona", "Coronavirus", "Kanalisation", "Kläranlage", "Krankheit" ;
+    cube:observationSet <https://ld.bs.ch/100187/observation-set> .
+
+<https://ld.bs.ch/100187/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "datum" .
+
+<https://ld.bs.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "spatial_coverage" .
+
+<https://ld.bs.ch/property/7_tagemedian_of_e_n1_n2_pro_tag_100_000_pers> a cube:MeasureDimension ;
+    schema:name "7_tagemedian_of_e_n1_n2_pro_tag_100_000_pers" .
+
+<https://ld.bs.ch/property/7t_median_bs_bl> a cube:MeasureDimension ;
+    schema:name "7t_median_bs_bl" .
