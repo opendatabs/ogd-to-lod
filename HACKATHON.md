@@ -164,7 +164,7 @@ preconfigured with:
 
 ### Dereferencing your cube IRIs
 
-The bundled example uses `https://ld.domain.ch/statistics/...` as the
+The bundled example uses `https://ld.bs.ch...` as the
 base. Trifid's `DATASET_BASE_URL` is set to that host by default in
 `docker-compose.yml`, so a request to
 
@@ -173,7 +173,7 @@ http://localhost:8080/statistics/weather-binningen-hourly
 ```
 
 is rewritten to a SPARQL `DESCRIBE` against
-`<https://ld.domain.ch/statistics/weather-binningen-hourly>` and you get
+`<https://ld.bs.chweather-binningen-hourly>` and you get
 the cube's full set of triples rendered as HTML. Same trick for any
 observation, property, or DefinedTerm IRI.
 
@@ -190,7 +190,7 @@ If you just want to inspect a specific resource without running Trifid,
 Fuseki's SPARQL UI handles `DESCRIBE` natively:
 
 ```sparql
-DESCRIBE <https://ld.domain.ch/statistics/weather-binningen-hourly>
+DESCRIBE <https://ld.bs.chweather-binningen-hourly>
 ```
 
 That returns the same triple set Trifid renders, just without the HTML
