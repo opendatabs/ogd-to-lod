@@ -1,0 +1,30 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100384> a cube:Cube ;
+    schema:name "Zeitreihe der Temperaturen der Gartenbäder" ;
+    schema:description "Dieser Datensatz enthält die aktuellen Wassertemperaturen in den Gartenbädern.\n\nDie Temperaturdaten werden alle 15 Minuten aktualisiert, indem ein automatisiertes Programm die neuesten Werte von der Webseite https://www.ed-baeder.ch/ abruft. Auf dieser Webseite findet man auch sonstige Meldungen zu den Gartenbädern.\n\nFalls ein Gartenbad geschlossen ist oder keine Temperaturmessung verfügbar ist, wird für diesen Zeitraum kein Wert im Datensatz vermerkt.\n\nWeiterführende Links:\nWeitere Informationen zu den Gartenbädern: https://www.bs.ch/themen/kultur-sport-und-freizeit/baeder-kunsteisbahnen-sportanlagen-und-raeume/gartenbaeder-basel\nZeitreihe der Temperaturen der Gartenbäder als Datensatz: https://data.bs.ch/explore/dataset/100384/\nDiese und weitere Sportanlagen als Datensatz: https://data.bs.ch/explore/dataset/100151/" ;
+    schema:publisher "Jugend, Familie und Sport" ;
+    dcterms:license "CC BY 4.0" ;
+    schema:keywords "Baden", "Familienbad", "Hallenbad", "Live", "OpenSportData", "Schwimmen", "Schwimmzone", "Sportbad", "behindertengerecht" ;
+    cube:observationSet <https://ld.bs.ch/100384/observation-set> .
+
+<https://ld.bs.ch/100384/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/name> a cube:KeyDimension ;
+    schema:name "name" ;
+    schema:description "Name des Bads" .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "zeitpunkt_job" ;
+    schema:description "Zeitpunkt, an dem die Daten gescraped wurden" .
+
+<https://ld.bs.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "koordinaten" .
+
+<https://ld.bs.ch/property/temperatur> a cube:MeasureDimension ;
+    schema:name "temperatur" ;
+    schema:description "Temperatur des Wassers" ;
+    schema:disambiguatingDescription "unit: °C" .
