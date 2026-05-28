@@ -1,0 +1,35 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100236> a cube:Cube ;
+    schema:name "Birs Temperatur, Wasserstand und Abfluss" ;
+    schema:description "Dieser Datensatz zeigt den Wasserstand, die Abflussmenge und die Temperatur der Birs bei \"Hofmatt\" in Münchenstein etwa auf Höhe der Brücke \"Baselstrasse\" über die Birs. Es liegen aktuelle Werte alle 5 Minuten vor. Die Messungen werden im Auftrag des Bundesamts für Umwelt durchgeführt (siehe https://www.hydrodaten.admin.ch/de/seen-und-fluesse/stationen-und-daten/2106)." ;
+    schema:publisher "Bundesamt für Umwelt BAFU" ;
+    dcterms:issued "2022-11-10"^^xsd:date ;
+    dcterms:modified "2022-11-01"^^xsd:date ;
+    dcterms:license "CC0 1.0" ;
+    schema:keywords "Abflussmenge", "Birs", "Strömung", "Temperatur", "Tiefe", "Wasser", "Wasserstand" ;
+    cube:observationSet <https://ld.bs.ch/100236/observation-set> .
+
+<https://ld.bs.ch/100236/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "Zeitstempel" ;
+    schema:description "Datum und Uhrzeit" .
+
+<https://ld.bs.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "spatial_coverage" .
+
+<https://ld.bs.ch/property/Abflussmenge> a cube:MeasureDimension ;
+    schema:name "Abflussmenge" ;
+    schema:description "Abfliessende Wassermenge in Kubikmetern pro Sekunde" .
+
+<https://ld.bs.ch/property/Wasserstand> a cube:MeasureDimension ;
+    schema:name "Wasserstand" ;
+    schema:description "Pegelstand in Metern über Meer" .
+
+<https://ld.bs.ch/property/Temperatur> a cube:MeasureDimension ;
+    schema:name "Temperatur" ;
+    schema:description "Temperatur in Grad Celsius" .
