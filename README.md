@@ -79,6 +79,7 @@ The application uses a YAML configuration file (`config/config.yaml`) with envir
 | `GITHUB_REPO` | Target repository for generated mappings | `redlink-gmbh/ogd-to-lod-mappings` |
 | `LOG_LEVEL` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) | `INFO` |
 | `HUWISE_DOMAIN` | Huwise domain used to derive `https://<domain>/api/explore/v2.1` (required only with `--dataset-id`) | unset |
+| `HUWISE_API_KEY` | Huwise Automation API key for [`tests/e2e/push-to-huwise.sh`](tests/e2e/push-to-huwise.sh) | unset |
 
 ### Configuration File
 
@@ -335,6 +336,33 @@ tests/e2e/post-to-fuseki.sh --clean results/<YYYYMMDD-HHMMSS>-<output-folder>
 Protocol with HTTP basic auth; override `FUSEKI_URL` /
 `FUSEKI_UPDATE_URL` / `FUSEKI_USER` / `FUSEKI_PASSWORD` to point at a
 different endpoint.
+
+### Push YARRRML to Huwise (Automation API)
+
+After `--local` (or from a merged `mapping/<folder>/mapping.yarrrml.yaml`), push
+the mapping into Huwise `semantic.rml_mapping` metadata:
+
+```bash
+# Verify semantic template + rml_mapping field on your portal
+tests/e2e/push-to-huwise.sh --check
+
+# From a results folder (HACKATHON.md Step 3)
+tests/e2e/push-to-huwise.sh --dataset-id 100051 results/<timestamp>-<output-folder>
+
+# From mappings-repo layout after merge
+scripts/push-yarrrml-after-merge.sh --dataset-id 100051 mapping/<output-folder>
+```
+
+Requires `HUWISE_DOMAIN` and `HUWISE_API_KEY` in `.env`, plus host `python3`
+with PyYAML (`pip install -e .`). Prepares ogd-to-lod YARRRML for the
+[Huwise TPF mapping dialect](https://help.opendatasoft.com/apis/tpf), then uses
+[Automation API](https://developer.huwise.com/apis/automation/v1.0/index.html)
+(`PUT .../metadata/semantic/rml_mapping/` then `POST .../publish_metadata/`).
+Verifies RDF via `https://<HUWISE_DOMAIN>/api/tpf/<DATASET_ID>/` after publish.
+
+Optional: GitHub Actions workflow [`.github/workflows/push-huwise-mapping.yml`](.github/workflows/push-huwise-mapping.yml)
+(manual `workflow_dispatch`, or push to `main` under `mapping/**/mapping.yarrrml.yaml`
+with repo variable `HUWISE_DATASET_ID` and secrets `HUWISE_DOMAIN`, `HUWISE_API_KEY`).
 
 ## Project Structure
 
