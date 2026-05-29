@@ -1,0 +1,42 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.tg.ch/dbu-afu-9> a cube:Cube ;
+    schema:name "Hydrometrie Thurgau - Wassertemperatur (°C)" ;
+    schema:description "Der Datensatz beinhaltet Informationen den Parameter Wassertemperatur (°C) für verschiedene Messtationen des Hydrologischen Messnetzes im Kanton Thurgau. Über die im Datensatz enthaltene Objekt ID (obj_id) können Informationen zum Standort und der Messung aus dem Datensatz Messstationen bezogen werden.\nAus Speicherplatzgründen finden sich hier nur die Daten für die letzten 365 Tage. Vollständige Datensätze und teilweise feinere zeitliche Granularität können über den folgenden Link als gezippte CSV heruntergeladen werden:<br>\n<b><a href=\"https://ogdtg.ch/hydrodaten/wassertemperatur_c_full.csv.gz\" target=\"_blank\">Vollsträndige Daten als gezippte CSV</a></b><br><br>\n\n\n\n\n<b>BITTE BEACHTEN</b>: Es handelt sich um ungeprüfte Rohdaten aus Sensormessungen, welche nicht Plausibilisiert wurden.<br><br>\n\nDatenbezug erfolgt über ThurGIS. Hier können alle Messtationen und deren Standorte kartografisch eingesehen werden.<br><br>\n\n<a href=\"https://map.geo.tg.ch/apps/mf-geoadmin3/?lang=de&amp;topic=ech&amp;layers=hydrologische_messnetze_werterhebung&amp;layers_opacity=0.9\" target=\"_blank\">Link zur ThurGIS Karte</a>" ;
+    schema:publisher "Amt für Umwelt Kanton Thurgau" ;
+    dcterms:license "CC0 1.0" ;
+    schema:keywords "abfluss.pegel", "bodensee", "fliessgewaesser", "fluss", "gewaesserqualität", "hydrometrie", "leitfähigkeit", "temperatur", "untersee", "wasserstand" ;
+    cube:observationSet <https://ld.tg.ch/dbu-afu-9/observation-set> .
+
+<https://ld.tg.ch/dbu-afu-9/observation-set> a cube:ObservationSet .
+
+<https://ld.tg.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "timestamp" ;
+    schema:description "Startzeitpunkt der Messung" .
+
+<https://ld.tg.ch/property/obj_id> a cube:KeyDimension ;
+    schema:name "obj_id" ;
+    schema:description "Objekt ID" .
+
+<https://ld.tg.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "messgruppierung_ortsbezeichnung" ;
+    schema:description "Ortsbezeichnung der Messstelle" .
+
+<https://ld.tg.ch/property/parameter> a cube:KeyDimension ;
+    schema:name "parameter" ;
+    schema:description "Messparameter Bezeichnung" .
+
+<https://ld.tg.ch/property/verantwortlichkeit_organisation> a cube:KeyDimension ;
+    schema:name "verantwortlichkeit_organisation" ;
+    schema:description "Verantwortliche Organisation" .
+
+<https://ld.tg.ch/property/einheit> a cube:KeyDimension ;
+    schema:name "einheit" ;
+    schema:description "Einheit" .
+
+<https://ld.tg.ch/property/wert> a cube:MeasureDimension ;
+    schema:name "wert" ;
+    schema:description "Wassertemperatur (°C)" .
