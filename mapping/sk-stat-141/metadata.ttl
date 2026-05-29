@@ -1,0 +1,45 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.tg.ch/sk-stat-141> a cube:Cube ;
+    schema:name "Vorstösserinnen und Vorstösser im Grossen Rat des Kantons Thurgau" ;
+    schema:description "Der Datensatz enthält Daten zu den Mitgliedern des Grossen Rates, welche seit 2008 politische Vorstösse im Grossen Rat des Kantons Thurgau eingereicht haben. Über die Geschäftsnummer kann der Datensatz mit weiteren Datensätzen zum Grossen Rat wie den politischen Geschäften oder den Dokumenten verbunden (\"gejoint\") werden.\nSeit 26.05.2026 stammen die Daten von https://parlament.tg.ch/ und werden täglich automatisiert aktualisiert. Die elektronische Geschäftsdatenbank des Grossen Rats (GRGEKO) wurde damit abgelöst. Durch die Umstellung können ab der Legislatur 2016 Aussagen über den Erstunterzeichnenden eines politischen Vorstoss gemacht werden." ;
+    schema:publisher "Staatskanzlei Kanton Thurgau" ;
+    dcterms:license "CC0 1.0" ;
+    schema:keywords "Antrag", "Beschluss", "Einfache Anfrage", "GRGEKO", "Grosser Rat", "Grossrat", "Grossrätin", "Interpellation", "Kantonsparlament", "Kantonsrat", "Leistungsmotion", "Motion", "Parlament", "Parlamentarische Initiative", "Partei", "Petition", "Vorstoss", "Vorstösser", "Vorstösserin", "grdata" ;
+    cube:observationSet <https://ld.tg.ch/sk-stat-141/observation-set> .
+
+<https://ld.tg.ch/sk-stat-141/observation-set> a cube:ObservationSet .
+
+<https://ld.tg.ch/property/nr> a cube:KeyDimension ;
+    schema:name "nr" ;
+    schema:description "Eindeutige Identifikationsnummer des Mitglieds des Grossen Rats" .
+
+<https://ld.tg.ch/property/nachname> a cube:KeyDimension ;
+    schema:name "nachname" ;
+    schema:description "Nachname des Vorstössers oder der Vorstösserin" .
+
+<https://ld.tg.ch/property/vorname> a cube:KeyDimension ;
+    schema:name "vorname" ;
+    schema:description "Vorname des Vorstössers oder der Vorstösserin" .
+
+<https://ld.tg.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "ort" ;
+    schema:description "Wohnort des Vorstössers oder der Vorstösserin" .
+
+<https://ld.tg.ch/property/partei> a cube:KeyDimension ;
+    schema:name "partei" ;
+    schema:description "Partei des Vorstössers oder der Vorstösserin" .
+
+<https://ld.tg.ch/property/titel> a cube:KeyDimension ;
+    schema:name "titel" ;
+    schema:description "Titel des Geschäfts" .
+
+<https://ld.tg.ch/property/geschaeftsnummer> a cube:KeyDimension ;
+    schema:name "geschaeftsnummer" ;
+    schema:description "Geschäftsnummer" .
+
+<https://ld.tg.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "temporal_coverage" .
