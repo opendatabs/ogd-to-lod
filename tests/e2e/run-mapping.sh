@@ -41,6 +41,20 @@ fi
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
+# Git Bash/MSYS rewrites POSIX paths in CLI args (e.g. /data/*),
+# which breaks container-internal paths passed to docker.
+is_msys=false
+case "${OSTYPE:-}" in
+  msys*|cygwin*) is_msys=true ;;
+esac
+
+WORK_MOUNT="$WORK"
+if [[ "$is_msys" == "true" ]]; then
+  if command -v cygpath >/dev/null 2>&1; then
+    WORK_MOUNT="$(cygpath -m "$WORK")"
+  fi
+fi
+
 # Substitute the {CSV_SOURCE} placeholder with "data.csv".
 sed 's|{CSV_SOURCE}|data.csv|g' "$MAPPING" > "$WORK/mapping.yarrrml.yaml"
 cp "$CSV_SRC" "$WORK/data.csv"
@@ -49,19 +63,36 @@ YARRRML_IMAGE="${YARRRML_IMAGE:-rmlio/yarrrml-parser:latest}"
 RMLMAPPER_IMAGE="${RMLMAPPER_IMAGE:-rmlio/rmlmapper-java:latest}"
 
 echo "→ yarrrml-parser: mapping.yarrrml.yaml → mapping.ttl"
-docker run --rm --platform linux/amd64 \
-  -v "$WORK:/data" \
-  "$YARRRML_IMAGE" \
-  -i /data/mapping.yarrrml.yaml \
-  -o /data/mapping.ttl
+if [[ "$is_msys" == "true" ]]; then
+  MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' docker run --rm --platform linux/amd64 \
+    -v "$WORK_MOUNT:/data" \
+    "$YARRRML_IMAGE" \
+    -i /data/mapping.yarrrml.yaml \
+    -o /data/mapping.ttl
+else
+  docker run --rm --platform linux/amd64 \
+    -v "$WORK_MOUNT:/data" \
+    "$YARRRML_IMAGE" \
+    -i /data/mapping.yarrrml.yaml \
+    -o /data/mapping.ttl
+fi
 
 echo "→ RMLMapper: mapping.ttl + data.csv → observations.ttl"
-docker run --rm --platform linux/amd64 \
-  -v "$WORK:/data" \
-  "$RMLMAPPER_IMAGE" \
-  -m /data/mapping.ttl \
-  -o /data/observations.ttl \
-  -s turtle
+if [[ "$is_msys" == "true" ]]; then
+  MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' docker run --rm --platform linux/amd64 \
+    -v "$WORK_MOUNT:/data" \
+    "$RMLMAPPER_IMAGE" \
+    -m /data/mapping.ttl \
+    -o /data/observations.ttl \
+    -s turtle
+else
+  docker run --rm --platform linux/amd64 \
+    -v "$WORK_MOUNT:/data" \
+    "$RMLMAPPER_IMAGE" \
+    -m /data/mapping.ttl \
+    -o /data/observations.ttl \
+    -s turtle
+fi
 
 cp "$WORK/observations.ttl" "$FOLDER/observations.ttl"
 echo "✓ Wrote: $FOLDER/observations.ttl"
