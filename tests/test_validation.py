@@ -359,6 +359,14 @@ class TestValidateWithRMLMapper:
     @patch("subprocess.run")
     def test_rmlmapper_failure(self, mock_run, data_csv, sample_rml):
         """Test that RMLMapper failure (step 2) returns invalid result."""
+        _path_exists = Path.exists
+
+        def path_exists(self: Path) -> bool:
+            # yarrrml-parser is mocked; pretend it wrote mapping.ttl
+            if self.name == "mapping.ttl":
+                return True
+            return _path_exists(self)
+
         mock_run.side_effect = [
             # Step 1: yarrrml-parser succeeds
             subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr=""),
@@ -372,7 +380,8 @@ class TestValidateWithRMLMapper:
         ]
 
         validator = RMLValidator(use_docker=True)
-        result = validator.validate_with_rmlmapper(sample_rml, data_csv)
+        with patch.object(Path, "exists", path_exists):
+            result = validator.validate_with_rmlmapper(sample_rml, data_csv)
 
         assert result.valid is False
         assert result.error_category == "missing_column"
