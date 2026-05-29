@@ -1,0 +1,44 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100051/"
+  ex-obs: "https://ld.bs.ch/100051/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(datum_zeit)"
+    po:
+      - [a, cube:Observation]
+      - [ex-property:ZEIT, "$(datum_zeit)", xsd:dateTime]
+      - ["ex-property:O3_ug_m3", "$(o3_ug_m3)", xsd:decimal]
+      - ["ex-property:NO2_ug_m3", "$(no2_ug_m3)", xsd:decimal]
+      - ["ex-property:PM10_ug_m3", "$(pm10_ug_m3)", xsd:decimal]
+      - ["ex-property:PM2_5_ug_m3", "$(pm2_5_ug_m3)", xsd:decimal]
+      - ["ex-property:CPC_1_cm3", "$(cpc_1_cm3)", xsd:decimal]
+      - ["ex-property:EC_ug_m3", "$(ec_ug_m3)", xsd:decimal]
+      - ["ex-property:PREC_mm", "$(prec_mm)", xsd:decimal]
+      - ["ex-property:RAD_W_m2", "$(rad_w_m2)", xsd:decimal]
+      - ["ex-property:SO2_ug_m3", "$(so2_ug_m3)", xsd:decimal]
+      - ["ex-property:NOX_ug_m3_eq_NO2", "$(nox_ug_m3_eq_no2)", xsd:decimal]
+      - ["ex-property:TEMP_C", "$(temp_c)", xsd:decimal]
+
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(datum_zeit)~iri"]
