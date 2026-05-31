@@ -25,7 +25,7 @@ class AzureOpenAIConfig:
     endpoint: str
     api_key: str
     deployment: str
-    api_version: str = "2024-02-15-preview"
+    api_version: str = str
     max_requests: int = 50  # Maximum AI requests before asking user to continue
     # Pricing in CHF per 1M tokens
     price_per_1m_input_tokens: float = 1.02
@@ -179,7 +179,7 @@ def load_config(config_path: str | Path) -> Config:
             endpoint=azure_data.get("endpoint", ""),
             api_key=azure_data.get("api_key", ""),
             deployment=azure_data.get("deployment", ""),
-            api_version=azure_data.get("api_version", "2024-02-15-preview"),
+            api_version=azure_data.get("api_version", ""),
             max_requests=azure_data.get("max_requests", 50),
             price_per_1m_input_tokens=pricing_data.get("price_per_1m_input_tokens", 1.02),
             price_per_1m_output_tokens=pricing_data.get("price_per_1m_output_tokens", 8.08),
