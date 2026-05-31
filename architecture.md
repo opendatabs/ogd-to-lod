@@ -9,6 +9,7 @@
 - **Azure OpenAI (GPT)**
 - **LangGraph** - State machine for multi-step conversation flow
 - **langchain-openai** - Azure OpenAI integration for LangGraph
+- **Note:** The CLI can switch to an Ollama OpenAI-compatible endpoint with `--use-ollama-llm` while keeping Azure as the default.
 
 ### Mapping Format
 - **YARRRML** (YAML-based RML) - compact, human-readable, fewer LLM syntax errors than Turtle RML

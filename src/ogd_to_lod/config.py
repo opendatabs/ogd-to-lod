@@ -34,6 +34,20 @@ class AzureOpenAIConfig:
 
 
 @dataclass
+class OllamaConfig:
+    """Ollama configuration."""
+
+    base_url: str
+    model: str
+    api_key: str = "ollama"
+    max_requests: int = 50
+    # Pricing defaults to zero for local/self-hosted usage
+    price_per_1m_input_tokens: float = 0.0
+    price_per_1m_output_tokens: float = 0.0
+    price_per_1m_cached_tokens: float = 0.0
+
+
+@dataclass
 class SPARQLConfig:
     """SPARQL endpoint configuration."""
 
@@ -127,6 +141,41 @@ def _process_config_values(obj: dict | list | str) -> dict | list | str:
     elif isinstance(obj, str):
         return _substitute_env_vars(obj)
     return obj
+
+
+def load_ollama_config_from_env(default_max_requests: int = 50) -> OllamaConfig:
+    """Load Ollama config from environment variables.
+
+    Args:
+        default_max_requests: Request limit to apply when not configured elsewhere.
+
+    Returns:
+        OllamaConfig built from environment variables.
+    """
+    base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1").strip()
+    model = os.environ.get("OLLAMA_MODEL", "").strip()
+    api_key = os.environ.get("OLLAMA_API_KEY", "ollama").strip() or "ollama"
+    return OllamaConfig(
+        base_url=base_url,
+        model=model,
+        api_key=api_key,
+        max_requests=default_max_requests,
+    )
+
+
+def validate_ollama_config(config: OllamaConfig) -> None:
+    """Validate Ollama config values.
+
+    Args:
+        config: OllamaConfig to validate.
+
+    Raises:
+        ValueError: If required configuration values are missing.
+    """
+    if not config.base_url:
+        raise ValueError("OLLAMA_BASE_URL is required when using --use-ollama-llm")
+    if not config.model:
+        raise ValueError("OLLAMA_MODEL is required when using --use-ollama-llm")
 
 
 def load_config(config_path: str | Path) -> Config:

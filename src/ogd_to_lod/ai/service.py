@@ -1,5 +1,4 @@
-"""Azure OpenAI service wrapper with conversation management."""
-
+"""LLM service wrapper with conversation management."""
 import re
 import time
 from dataclasses import dataclass, field
@@ -7,10 +6,10 @@ from pathlib import Path
 from typing import Any, Callable
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langchain_openai import AzureChatOpenAI
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from openai import APIConnectionError, APIStatusError, RateLimitError
 
-from ogd_to_lod.config import AzureOpenAIConfig
+from ogd_to_lod.config import AzureOpenAIConfig, OllamaConfig
 from ogd_to_lod.logging import get_logger
 
 logger = get_logger(__name__)
@@ -152,11 +151,37 @@ class ConnectionFailed(AIServiceError):
     pass
 
 
+def _create_llm_client(
+    *,
+    use_ollama: bool,
+    azure: AzureOpenAIConfig,
+    ollama: OllamaConfig | None,
+) -> Any:
+    """Create the configured LangChain chat client."""
+    if use_ollama:
+        if ollama is None:
+            raise ValueError("ollama_config is required when use_ollama=True")
+        return ChatOpenAI(
+            model=ollama.model,
+            base_url=ollama.base_url.rstrip("/"),
+            api_key=ollama.api_key,
+            max_retries=0,
+        )
+
+    return AzureChatOpenAI(
+        azure_endpoint=azure.endpoint,
+        azure_deployment=azure.deployment,
+        api_key=azure.api_key,
+        api_version=azure.api_version,
+        max_retries=0,
+    )
+
+
 class AIService:
-    """Azure OpenAI service wrapper with conversation management.
+    """LLM service wrapper with conversation management.
 
     Provides:
-    - Message sending to Azure OpenAI
+    - Message sending to Azure OpenAI or Ollama
     - System prompt configuration (from string or file)
     - Conversation history management
     - Response parsing for code blocks
@@ -170,6 +195,8 @@ class AIService:
         system_prompt_file: str | Path | None = None,
         max_retries: int = 3,
         retry_delay: float = 1.0,
+        use_ollama: bool = False,
+        ollama_config: OllamaConfig | None = None,
     ):
         """Initialize the AI service.
 
@@ -180,25 +207,30 @@ class AIService:
                 Takes precedence over system_prompt if provided.
             max_retries: Maximum number of retries on rate limit errors.
             retry_delay: Initial delay between retries (exponential backoff).
+            use_ollama: Whether to use Ollama instead of Azure OpenAI.
+            ollama_config: Ollama configuration when use_ollama is True.
         """
         self._config = config
+        self._use_ollama = use_ollama
+        self._provider_name = "Ollama" if use_ollama else "Azure OpenAI"
+        self._active_config = ollama_config if use_ollama else config
+        if self._active_config is None:
+            raise ValueError("ollama_config is required when use_ollama=True")
         self._max_retries = max_retries
         self._retry_delay = retry_delay
         self._conversation_history: list[Message] = []
         self._request_count = 0  # Track number of requests made
-        self._request_limit = config.max_requests  # Maximum requests before asking user
+        self._request_limit = self._active_config.max_requests
         self._token_usage = TokenUsage()  # Cumulative token usage
         self._last_request_tokens = TokenUsage()  # Tokens from last request
         self._token_callbacks: list[TokenCallback] = []  # Callbacks for token updates
 
-        # Initialize the LangChain Azure OpenAI client
+        # Initialize the LangChain chat client
         # Disable SDK retries - we handle retries ourselves for better user feedback
-        self._client = AzureChatOpenAI(
-            azure_endpoint=config.endpoint,
-            azure_deployment=config.deployment,
-            api_key=config.api_key,
-            api_version=config.api_version,
-            max_retries=0,  # Disable automatic retries - we handle them ourselves
+        self._client = _create_llm_client(
+            use_ollama=use_ollama,
+            azure=config,
+            ollama=ollama_config,
         )
 
         # Load system prompt
@@ -282,9 +314,23 @@ class AIService:
             Total cost in CHF.
         """
         return self._token_usage.calculate_cost(
-            self._config.price_per_1m_input_tokens,
-            self._config.price_per_1m_output_tokens,
-            self._config.price_per_1m_cached_tokens,
+            self._active_config.price_per_1m_input_tokens,
+            self._active_config.price_per_1m_output_tokens,
+            self._active_config.price_per_1m_cached_tokens,
+        )
+
+    @property
+    def provider_name(self) -> str:
+        """Get the active LLM provider name."""
+        return self._provider_name
+
+    @property
+    def active_pricing(self) -> tuple[float, float, float]:
+        """Get active pricing tuple (input, output, cached) per 1M tokens."""
+        return (
+            self._active_config.price_per_1m_input_tokens,
+            self._active_config.price_per_1m_output_tokens,
+            self._active_config.price_per_1m_cached_tokens,
         )
 
     def register_token_callback(self, callback: TokenCallback) -> None:
@@ -356,23 +402,26 @@ class AIService:
         # Try to extract from response_metadata (LangChain format)
         if hasattr(response, "response_metadata"):
             metadata = response.response_metadata
-            if "token_usage" in metadata:
+            if isinstance(metadata, dict) and "token_usage" in metadata:
                 token_data = metadata["token_usage"]
-                usage.input_tokens = token_data.get("prompt_tokens", 0)
-                usage.output_tokens = token_data.get("completion_tokens", 0)
-                usage.total_tokens = token_data.get("total_tokens", 0)
+                if isinstance(token_data, dict):
+                    usage.input_tokens = token_data.get("prompt_tokens", 0)
+                    usage.output_tokens = token_data.get("completion_tokens", 0)
+                    usage.total_tokens = token_data.get("total_tokens", 0)
 
-                # Azure OpenAI may provide cached tokens separately
-                if "prompt_tokens_details" in token_data:
-                    details = token_data["prompt_tokens_details"]
-                    usage.cached_tokens = details.get("cached_tokens", 0)
+                    # Azure OpenAI may provide cached tokens separately
+                    if "prompt_tokens_details" in token_data:
+                        details = token_data["prompt_tokens_details"]
+                        if isinstance(details, dict):
+                            usage.cached_tokens = details.get("cached_tokens", 0)
 
         # Try to extract from usage_metadata (newer LangChain format)
         elif hasattr(response, "usage_metadata"):
             metadata = response.usage_metadata
-            usage.input_tokens = metadata.get("input_tokens", 0)
-            usage.output_tokens = metadata.get("output_tokens", 0)
-            usage.total_tokens = metadata.get("total_tokens", 0)
+            if isinstance(metadata, dict):
+                usage.input_tokens = metadata.get("input_tokens", 0)
+                usage.output_tokens = metadata.get("output_tokens", 0)
+                usage.total_tokens = metadata.get("total_tokens", 0)
 
         return usage
 
@@ -474,38 +523,46 @@ class AIService:
             except APIConnectionError as e:
                 # Remove user message from history on connection failure
                 self._conversation_history.pop()
-                logger.error(f"Connection to Azure OpenAI failed: {e}")
+                logger.error(f"Connection to {self._provider_name} failed: {e}")
                 print(
                     f"\n⚠ Connection failed: {e}\n"
-                    f"Please check your network and Azure OpenAI endpoint configuration.",
+                    f"Please check your network and {self._provider_name} endpoint configuration.",
                     flush=True,
                 )
                 raise ConnectionFailed(
-                    f"Failed to connect to Azure OpenAI: {e}"
+                    f"Failed to connect to {self._provider_name}: {e}"
                 ) from e
 
             except APIStatusError as e:
                 # Remove user message from history on error
                 self._conversation_history.pop()
-                logger.error(f"Azure OpenAI API error {e.status_code}: {e.message}")
+                logger.error(f"{self._provider_name} API error {e.status_code}: {e.message}")
 
                 # Provide user-friendly error messages
                 if e.status_code == 401:
+                    if self._use_ollama:
+                        auth_hint = "Please check your OLLAMA_API_KEY if your endpoint requires auth."
+                    else:
+                        auth_hint = "Please check your AZURE_OPENAI_KEY environment variable."
                     print(
                         f"\n⚠ Authentication failed (401)\n"
-                        f"Please check your AZURE_OPENAI_KEY environment variable.",
+                        f"{auth_hint}",
                         flush=True,
                     )
                 elif e.status_code == 404:
+                    if self._use_ollama:
+                        missing_hint = "Please check your OLLAMA_MODEL name and endpoint URL."
+                    else:
+                        missing_hint = "Please check your deployment name in config.yaml."
                     print(
-                        f"\n⚠ Deployment not found (404)\n"
-                        f"Please check your deployment name in config.yaml.",
+                        f"\n⚠ Resource not found (404)\n"
+                        f"{missing_hint}",
                         flush=True,
                     )
                 elif e.status_code == 429:
                     print(
                         f"\n⚠ Rate limit exceeded (429)\n"
-                        f"Your Azure OpenAI quota has been exceeded.",
+                        f"Your {self._provider_name} quota or concurrency limit has been exceeded.",
                         flush=True,
                     )
                 else:
@@ -515,7 +572,7 @@ class AIService:
                     )
 
                 raise AIServiceError(
-                    f"Azure OpenAI API error ({e.status_code}): {e.message}"
+                    f"{self._provider_name} API error ({e.status_code}): {e.message}"
                 ) from e
 
             except Exception as e:

@@ -5,7 +5,7 @@ from typing import Any
 from langgraph.graph import END, StateGraph
 
 from ogd_to_lod.ai import AIService
-from ogd_to_lod.config import Config
+from ogd_to_lod.config import Config, OllamaConfig, load_ollama_config_from_env
 from ogd_to_lod.logging import get_logger
 
 from .nodes import (
@@ -35,16 +35,34 @@ class MappingFlow:
     handling state transitions and user interactions.
     """
 
-    def __init__(self, config: Config, ai_service: AIService | None = None):
+    def __init__(
+        self,
+        config: Config,
+        ai_service: AIService | None = None,
+        use_ollama_llm: bool = False,
+        ollama_config: OllamaConfig | None = None,
+    ):
         """Initialize the mapping flow.
 
         Args:
             config: Application configuration.
             ai_service: Optional AI service instance. If not provided,
                 one will be created from config.
+            use_ollama_llm: Whether to use Ollama instead of Azure OpenAI.
+            ollama_config: Optional pre-loaded Ollama config.
         """
         self._config = config
-        self._ai_service = ai_service or AIService(config.azure)
+        if ai_service is not None:
+            self._ai_service = ai_service
+        else:
+            resolved_ollama_config = ollama_config
+            if use_ollama_llm and resolved_ollama_config is None:
+                resolved_ollama_config = load_ollama_config_from_env(config.azure.max_requests)
+            self._ai_service = AIService(
+                config.azure,
+                use_ollama=use_ollama_llm,
+                ollama_config=resolved_ollama_config,
+            )
         self._graph = self._build_graph()
         self._state = GraphState()
 

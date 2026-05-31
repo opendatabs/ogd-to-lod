@@ -5,12 +5,23 @@ import os
 import sys
 
 from ogd_to_lod.ai import RequestLimitReached, TokenUsage
-from ogd_to_lod.config import load_config
+from ogd_to_lod.config import (
+    OllamaConfig,
+    load_config,
+    load_ollama_config_from_env,
+    validate_ollama_config,
+)
 from ogd_to_lod.graph import FlowState, MappingFlow
 from ogd_to_lod.huwise_setup import DatasetSetupError, prepare_dataset_inputs
 from ogd_to_lod.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+def _has_local_pricing(flow: MappingFlow) -> bool:
+    """Return True when active pricing is local (all zero)."""
+    input_price, output_price, cached_price = flow.ai_service.active_pricing
+    return input_price == 0 and output_price == 0 and cached_price == 0
 
 
 def compose_dataset_csv_source_url(base_url: str, dataset_id: str) -> str:
@@ -43,7 +54,10 @@ def format_token_stats(flow: MappingFlow) -> str:
     if usage.cached_tokens > 0:
         lines[-1] += f", {usage.cached_tokens:,} cached"
     lines[-1] += ")"
-    lines.append(f"Cost: CHF {cost:.4f}")
+    if _has_local_pricing(flow):
+        lines.append("Cost: n/a (local)")
+    else:
+        lines.append(f"Cost: CHF {cost:.4f}")
 
     return " | ".join(lines)
 
@@ -132,6 +146,11 @@ def main() -> int:
             "opening a GitHub PR"
         ),
     )
+    parser.add_argument(
+        "--use-ollama-llm",
+        action="store_true",
+        help="Use Ollama instead of Azure OpenAI (requires OLLAMA_* env vars)",
+    )
     args = parser.parse_args()
 
     # Load configuration
@@ -144,8 +163,21 @@ def main() -> int:
         print(f"Error: Invalid configuration: {e}", file=sys.stderr)
         return 1
 
+    ollama_config: OllamaConfig | None = None
+    if args.use_ollama_llm:
+        try:
+            ollama_config = load_ollama_config_from_env(config.azure.max_requests)
+            validate_ollama_config(ollama_config)
+        except ValueError as e:
+            print(f"Error: Invalid Ollama configuration: {e}", file=sys.stderr)
+            return 1
+
     print("OGD to LOD - RML Mapping Tool")
     print(f"Configuration loaded from: {args.config}")
+    if args.use_ollama_llm and ollama_config is not None:
+        print(f"Using LLM provider: Ollama ({ollama_config.model} @ {ollama_config.base_url})")
+    else:
+        print(f"Using LLM provider: Azure OpenAI ({config.azure.deployment})")
 
     if args.dataset_id and args.csv_path:
         print(
@@ -211,10 +243,15 @@ def main() -> int:
 
     # Start the mapping flow
     try:
-        flow = MappingFlow(config)
+        flow = MappingFlow(
+            config,
+            use_ollama_llm=args.use_ollama_llm,
+            ollama_config=ollama_config,
+        )
 
         # Register callback for real-time token updates
-        token_callback = create_token_callback(config.azure.max_requests)
+        request_limit = ollama_config.max_requests if ollama_config else config.azure.max_requests
+        token_callback = create_token_callback(request_limit)
         flow.ai_service.register_token_callback(token_callback)
 
         state = flow.start(
@@ -421,13 +458,19 @@ def main() -> int:
     print(f"  - Output: {usage.output_tokens:,}")
     if usage.cached_tokens > 0:
         print(f"  - Cached: {usage.cached_tokens:,}")
-    print(f"\nEstimated Cost: CHF {cost:.4f}")
-    print(f"  (Input: CHF {(usage.input_tokens / 1_000_000) * flow._config.azure.price_per_1m_input_tokens:.4f}, "
-          f"Output: CHF {(usage.output_tokens / 1_000_000) * flow._config.azure.price_per_1m_output_tokens:.4f}")
-    if usage.cached_tokens > 0:
-        print(f"   Cached: CHF {(usage.cached_tokens / 1_000_000) * flow._config.azure.price_per_1m_cached_tokens:.4f})")
+    input_price, output_price, cached_price = ai.active_pricing
+    if _has_local_pricing(flow):
+        print("\nEstimated Cost: n/a (local)")
     else:
-        print(")")
+        print(f"\nEstimated Cost: CHF {cost:.4f}")
+        print(
+            f"  (Input: CHF {(usage.input_tokens / 1_000_000) * input_price:.4f}, "
+            f"Output: CHF {(usage.output_tokens / 1_000_000) * output_price:.4f}"
+        )
+        if usage.cached_tokens > 0:
+            print(f"   Cached: CHF {(usage.cached_tokens / 1_000_000) * cached_price:.4f})")
+        else:
+            print(")")
 
     return 0
 

@@ -20,10 +20,15 @@ folder in your IDE while the commands are running.
 ## Prerequisites
 
 - Docker Desktop running (Mac/Windows) or Docker Engine (Linux).
-- Azure OpenAI credentials. Copy `.env.example` to `.env` and fill in:
-  - `AZURE_OPENAI_ENDPOINT`
-  - `AZURE_OPENAI_KEY`
-  - `AZURE_OPENAI_DEPLOYMENT`
+- LLM credentials (choose one provider). Copy `.env.example` to `.env` and fill in:
+  - **Azure (default):**
+    - `AZURE_OPENAI_ENDPOINT`
+    - `AZURE_OPENAI_KEY`
+    - `AZURE_OPENAI_DEPLOYMENT`
+  - **Ollama (when using `--use-ollama-llm`):**
+    - `OLLAMA_BASE_URL`
+    - `OLLAMA_MODEL`
+    - `OLLAMA_API_KEY` (optional for most Ollama setups)
   - `APP_GITHUB_TOKEN` — any value; only used by the PR path, not by `--local`.
 - For dataset bootstrap mode (`--dataset-id`) and Huwise push, also set:
   - `HUWISE_DOMAIN` (for example `data.bs.ch`)
@@ -68,6 +73,16 @@ docker compose run --rm ogd-to-lod \
     --output-folder weather-binningen-hourly \
     --context example/weather-binningen-hourly/dcat.ttl \
               example/weather-binningen-hourly/fields.txt \
+    --local
+```
+
+Ollama path (same flow, different LLM backend):
+
+```bash
+docker compose run --rm ogd-to-lod \
+    example/weather-binningen-hourly/data.csv \
+    --output-folder weather-binningen-hourly \
+    --use-ollama-llm \
     --local
 ```
 

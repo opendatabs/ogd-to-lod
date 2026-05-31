@@ -1,4 +1,4 @@
-"""AI service integration with Azure OpenAI."""
+"""AI service integration for LLM providers."""
 
 from ogd_to_lod.ai.service import (
     DEFAULT_SYSTEM_PROMPT,

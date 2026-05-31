@@ -64,13 +64,24 @@ The result is a human-reviewable pull request that can be merged, adjusted, or r
 
 The application uses a YAML configuration file (`config/config.yaml`) with environment variable substitution.
 
-### Required Environment Variables
+### Required Environment Variables (Azure default)
 
 | Variable | Description |
 |----------|-------------|
 | `APP_GITHUB_TOKEN` | GitHub Personal Access Token with `repo` scope |
 | `AZURE_OPENAI_ENDPOINT` | Azure OpenAI endpoint URL |
 | `AZURE_OPENAI_KEY` | Azure OpenAI API key |
+| `AZURE_OPENAI_DEPLOYMENT` | Azure deployment/model name |
+
+### Ollama Environment Variables (optional)
+
+Use these when running with `--use-ollama-llm`:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OLLAMA_BASE_URL` | Base URL of Ollama OpenAI-compatible API | `http://localhost:11434/v1` |
+| `OLLAMA_MODEL` | Ollama model tag (for example `qwen2.5:72b`) | unset |
+| `OLLAMA_API_KEY` | API key passed to endpoint (often ignored by Ollama) | `ollama` |
 
 ### Optional Environment Variables
 
@@ -103,6 +114,12 @@ rml:
   rmlmapper_docker_image: "rmlio/rmlmapper-java:latest"
   yarrrml_parser_docker_image: "rmlio/yarrrml-parser:latest"
 ```
+
+### LLM provider selection
+
+- Default behavior uses Azure OpenAI.
+- To use Ollama instead, pass `--use-ollama-llm` and set `OLLAMA_*` variables in `.env`.
+- The rest of the workflow and prompts remain unchanged.
 
 > **SPARQL linker (early stage).** When a `sparql.endpoint` is configured, the tool
 > queries it for existing cube.link properties and DefinedTerms to reuse instead of
@@ -172,6 +189,7 @@ ogd-to-lod --dataset-id <id> [--output-folder <folder>]
 | `--base-uri` | `-b` | Base URI for generated resources (overrides config) |
 | `--local` | | Write results to `results/<timestamp>-<output-folder>/` instead of opening a GitHub PR |
 | `--dataset-id` | | Bootstrap CSV/context from Huwise API using dataset id |
+| `--use-ollama-llm` | | Use Ollama instead of Azure OpenAI (`OLLAMA_*` env vars) |
 | `--help` | | Show help message |
 
 ### Examples
@@ -209,6 +227,12 @@ ogd-to-lod example/weather-binningen-hourly/data.csv \
 
 # Dataset bootstrap mode (requires HUWISE_DOMAIN)
 ogd-to-lod --dataset-id 100051 --local
+
+# Use Ollama instead of Azure OpenAI
+ogd-to-lod example/weather-binningen-hourly/data.csv \
+    --output-folder weather-binningen-hourly \
+    --use-ollama-llm \
+    --local
 ```
 
 ### Dataset Bootstrap Mode (`--dataset-id`)
