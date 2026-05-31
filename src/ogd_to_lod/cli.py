@@ -28,7 +28,7 @@ def compose_dataset_csv_source_url(base_url: str, dataset_id: str) -> str:
     """Compose the proposed public CSV source URL for dataset-id mode."""
     return (
         f"{base_url}/catalog/datasets/{dataset_id}/exports/csv"
-        "?&use_labels=true&delimiter=%2C"
+        "?&use_labels=false&delimiter=%2C"
     )
 
 
