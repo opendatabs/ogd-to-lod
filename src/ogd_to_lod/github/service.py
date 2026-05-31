@@ -82,9 +82,10 @@ class GitHubService:
     ) -> PRResult:
         """Create a PR with a new RML mapping.
 
-        Creates a new branch, commits the YARRRML mapping file and the CSV
-        source file (and optionally context/metadata files), and opens a
-        pull request.
+        Creates a new branch, commits the YARRRML mapping file, the CSV
+        source file, a ``README.md`` with the PR description (rendered from
+        ``config/pr_template.md``), and optionally static metadata, then opens
+        a pull request.
 
         Args:
             mapping_name: Name for the mapping (used in PR title and commit messages).
@@ -144,6 +145,13 @@ class GitHubService:
                     f"Add static metadata: {mapping_name}"
                 )
                 logger.debug(f"Committed metadata file: {metadata_path}")
+
+            readme_path = f"{folder_path}/README.md"
+            self._commit_file(
+                branch_name, readme_path, description,
+                f"Add mapping README: {mapping_name}",
+            )
+            logger.debug(f"Committed README: {readme_path}")
 
             # Create the PR
             pr = self._create_pr(
