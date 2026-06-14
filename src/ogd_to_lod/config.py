@@ -25,7 +25,7 @@ class AzureOpenAIConfig:
     endpoint: str
     api_key: str
     deployment: str
-    api_version: str = str
+    api_version: str
     max_requests: int = 50  # Maximum AI requests before asking user to continue
     # Pricing in CHF per 1M tokens
     price_per_1m_input_tokens: float = 1.02
