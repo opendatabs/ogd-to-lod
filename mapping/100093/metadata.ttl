@@ -1,0 +1,69 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100093> a cube:Cube ;
+    schema:name "Smarte Strasse: Luftqualität" ;
+    schema:description "Das Lufthygieneamt beider Basel (LHA) testet im Projekt «Smarte Strasse» kosteneffiziente Mikrosensoren auf ihre Genauigkeit und Zuverlässigkeit. Der installierte Sensor vom Typ «Nubo» der Firma Sensirion AG ist in der Lage, die Konzentration verschiedener Schadstoffe in der Luft in Echtzeit zu ermitteln. Gemessen werden die Gehalte der Gase Stickstoffdioxid (NO2) und Ozon (O3), sowie die feinere Fraktion des Feinstaubs «PM2.5». Die Belastungen mit Stickstoffdioxid und Feinstaub werden hauptsächlich durch den motorisierten Verkehr und durch Heizungen verursacht. Ozon wird in der Atmosphäre aus den Vorläuferschadstoffen Stickstoffdioxid und flüchtigen organischen Stoffen (VOC) unter Sonneneinwirkung gebildet. Parallel wurden drei «Nubo»- Sensoren an den permanenten Messstationen des LHA am St. Johanns-Platz, an der Feldbergastrasse und auf der Autobahn A2 in der Hard installiert und gegen die Referenzmessgeräte des LHA verglichen. Diese Werte stehen ebenfalls auf OGD zur Verfügung: https://data.bs.ch/explore/dataset/100178/. Weitere Informationen zur Luftqualität in der Region Basel sind auf www.luftqualitaet.ch verfügbar. Hintergrundinformationen zu Ozon und Feinstaub auf den Webseiten www.ozon-info.ch und www.feinstaub.ch. Angaben zu den gesundheitlichen Auswirkungen der Luftverschmutzung auf der Webseite https://www.swisstph.ch/de/projects/ludok/healtheffects/. Die Maximalwerte (O3) und Mittelwerte (NO2, PM 2.5) des Vortages sind unter folgendem Datensatz zu finden: https://data.bs.ch/explore/dataset/100174/. Hinweis: Die Luft-Sensoren an der Gundeldingerstrasse wurden am 29.6.23 abmontiert. Seit Anfang/Mitte Juni wurden keine Daten mehr erhoben." ;
+    schema:publisher "Amt für Umwelt und Energie" ;
+    dcterms:license "CC BY 4.0" ;
+    schema:keywords "Feinstaub", "Luftqualität", "NO2", "O3", "PM2.5", "Smarte Strasse" ;
+    cube:observationSet <https://ld.bs.ch/100093/observation-set> .
+
+<https://ld.bs.ch/100093/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "timestamp" ;
+    schema:description "Zeitstempel der Messung im Standardformat" .
+
+<https://ld.bs.ch/property/sensor> a cube:KeyDimension ;
+    schema:name "sensor" .
+
+<https://ld.bs.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "location" .
+
+<https://ld.bs.ch/property/g107_no2> a cube:MeasureDimension ;
+    schema:name "g107_no2" ;
+    schema:description "NO2-Konzentration, gemessen vom Sensor g107" ;
+    schema:disambiguatingDescription "NO2: Stickstoffdioxid" .
+
+<https://ld.bs.ch/property/g107_03> a cube:MeasureDimension ;
+    schema:name "g107_03" ;
+    schema:description "Ozon-Konzentration, gemessen vom Sensor g107" ;
+    schema:disambiguatingDescription "O3: Ozon" .
+
+<https://ld.bs.ch/property/g107_pm25> a cube:MeasureDimension ;
+    schema:name "g107_pm25" ;
+    schema:description "Feinstaubkonzentration (PM2.5), gemessen vom Sensor g107" ;
+    schema:disambiguatingDescription "PM2.5: Feinstaub mit Korndurchmesser < 2.5 µm" .
+
+<https://ld.bs.ch/property/g125_no2> a cube:MeasureDimension ;
+    schema:name "g125_no2" ;
+    schema:description "NO2-Konzentration, gemessen vom Sensor g125" ;
+    schema:disambiguatingDescription "NO2: Stickstoffdioxid" .
+
+<https://ld.bs.ch/property/g125_o3> a cube:MeasureDimension ;
+    schema:name "g125_o3" ;
+    schema:description "Ozon-Konzentration, gemessen vom Sensor g125" ;
+    schema:disambiguatingDescription "O3: Ozon" .
+
+<https://ld.bs.ch/property/g125_pm25> a cube:MeasureDimension ;
+    schema:name "g125_pm25" ;
+    schema:description "Feinstaubkonzentration (PM2.5), gemessen vom Sensor g125" ;
+    schema:disambiguatingDescription "PM2.5: Feinstaub mit Korndurchmesser < 2.5 µm" .
+
+<https://ld.bs.ch/property/g131_no2> a cube:MeasureDimension ;
+    schema:name "g131_no2" ;
+    schema:description "NO2-Konzentration, gemessen vom Sensor g131" ;
+    schema:disambiguatingDescription "NO2: Stickstoffdioxid" .
+
+<https://ld.bs.ch/property/g131_o3> a cube:MeasureDimension ;
+    schema:name "g131_o3" ;
+    schema:description "Ozon-Konzentration, gemessen vom Sensor g131" ;
+    schema:disambiguatingDescription "O3: Ozon" .
+
+<https://ld.bs.ch/property/g131_pm25> a cube:MeasureDimension ;
+    schema:name "g131_pm25" ;
+    schema:description "Feinstaubkonzentration (PM2.5), gemessen vom Sensor g131" ;
+    schema:disambiguatingDescription "PM2.5: Feinstaub mit Korndurchmesser < 2.5 µm" .
