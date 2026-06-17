@@ -1,0 +1,32 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100075> a cube:Cube ;
+    schema:name "Fahrgastzahlen BVB" ;
+    schema:description "Die Daten umfassen die wöchentlichen Fahrgastzahlen der Basler Verkehrsbetriebe (BVB) von 2020 bis 2023. Ab 2024 werden monatliche Werte erfasst. Sie beruhen auf Messungen mit dem automatischen Fahrgastzählsystem und anschliessender Hochrechnung, und zwar für das gesamte Liniennetz der BVB. Tramlinien: 1, 2, 3, 6, 8, 14, 15, 16, 21; Buslinien: 30, 31, 32, 33, 34, 35, 36, 38, 42, 45, 46, 48, 50, Tramersatzverkehr. Nicht enthalten sind hingegen die Fahrgastzahlen der SBB, BLT oder ausländischer Transportunternehmen. Die Daten werden jeweils am 10. jeden Monats resp. am darauffolgenden Werktag aktualisiert. In Ausnahmefällen kann es aus technischen Gründen zu Verzögerungen im Prozess der Bereitstellung und Auswertung von Zähldaten kommen. Nachträglich verfügbare Messdaten werden in der hier vorliegenden Auswertung berücksichtigt, was in diesem Fall zu rückwirkenden Korrekturen führen kann. Änderungsprotokoll: 02.02.2024: Die Auswertungen auf Wochenbasis werden eingestellt und nur noch die Zeitreihe der Monatswerte werden fortgeführt." ;
+    schema:publisher "Basler Verkehrs-Betriebe" ;
+    dcterms:license "Freie Nutzung. Quellenangabe ist Pflicht. Kommerzielle Nutzung nur mit Bewilligung des Datenlieferanten zulässig." ;
+    schema:keywords "Bus", "Einsteiger", "Fahrgäste", "Haltestelle", "Passagier", "Tram" ;
+    cube:observationSet <https://ld.bs.ch/100075/observation-set> .
+
+<https://ld.bs.ch/100075/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "startdatum_kalenderwoche_monat" ;
+    schema:description "Das Attribut 'Startdatum Kalenderwoche/Monat' gibt den Anfang des Zeitraums an, für den die Fahrgastzahlen erfasst wurden, entweder den ersten Tag der Woche oder den ersten Tag des Monats entsprechend der Granularität." .
+
+<https://ld.bs.ch/property/kalenderwoche> a cube:KeyDimension ;
+    schema:name "kalenderwoche" ;
+    schema:description "Kalenderwoche" .
+
+<https://ld.bs.ch/property/granularitat> a cube:KeyDimension ;
+    schema:name "granularitat" ;
+    schema:description "Das Attribut 'Granularität' bestimmt, ob die Fahrgastdaten auf wöchentlicher oder monatlicher Basis erfasst wurden, um die zeitliche Detailgenauigkeit der Daten zu definieren." .
+
+<https://ld.bs.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "RAUM" .
+
+<https://ld.bs.ch/property/fahrgaste_einsteiger_innen> a cube:MeasureDimension ;
+    schema:name "fahrgaste_einsteiger_innen" .
