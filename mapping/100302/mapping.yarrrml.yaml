@@ -1,0 +1,90 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100302/"
+  ex-obs: "https://ld.bs.ch/100302/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(datum)_$(kw)_$(sample_ba_nr)"
+    po:
+      - [a, cube:Observation]
+      - [ex-property:ZEIT, $(datum), xsd:date]
+      - [ex-property:KW, $(kw), xsd:integer]
+      - [ex-property:RAUM, "ex-code:Basel-ARA~iri"]
+      - [ex-property:SAMPLE_BA_NR, $(sample_ba_nr), xsd:string]
+      - [ex-property:infa_gc_pcr, $(infa_gc_pcr), xsd:string]
+      - [ex-property:infb_gc_pcr, $(infb_gc_pcr), xsd:string]
+      - [ex-property:rsv_gc_pcr, $(rsv_gc_pcr), xsd:decimal]
+      - [ex-property:infa_gc_l, $(infa_gc_l), xsd:decimal]
+      - [ex-property:infb_gc_l, $(infb_gc_l), xsd:decimal]
+      - [ex-property:rsv_gc_l, $(rsv_gc_l), xsd:decimal]
+      - [ex-property:infa_gc_l_7_d_median, $(infa_gc_l_7_d_median), xsd:decimal]
+      - [ex-property:infb_gc_l_7_d_median, $(infb_gc_l_7_d_median), xsd:decimal]
+      - [ex-property:rsv_gc_l_7_d_median, $(rsv_gc_l_7_d_median), xsd:decimal]
+      - [ex-property:infa_gc_100_000_p, $(infa_gc_100_000_p), xsd:decimal]
+      - [ex-property:infb_gc_100_000_p, $(infb_gc_100_000_p), xsd:decimal]
+      - [ex-property:rsv_gc_100_000_p, $(rsv_gc_100_000_p), xsd:decimal]
+      - [ex-property:infa_gc_100_000_p_7_d_median, $(infa_gc_100_000_p_7_d_median), xsd:decimal]
+      - [ex-property:infb_gc_100_000_p_7_d_median, $(infb_gc_100_000_p_7_d_median), xsd:decimal]
+      - [ex-property:rsv_gc_100_000_p_7_d_median, $(rsv_gc_100_000_p_7_d_median), xsd:decimal]
+      - [ex-property:infa_gc_pmmov, $(infa_gc_pmmov), xsd:decimal]
+      - [ex-property:infb_gc_pmmov, $(infb_gc_pmmov), xsd:decimal]
+      - [ex-property:rsv_gc_pmmov, $(rsv_gc_pmmov), xsd:decimal]
+      - [ex-property:infa_gc_pmmov_7_d_median, $(infa_gc_pmmov_7_d_median), xsd:decimal]
+      - [ex-property:infb_gc_pmmov_7_d_median, $(infb_gc_pmmov_7_d_median), xsd:decimal]
+      - [ex-property:rsv_gc_pmmov_7_d_median, $(rsv_gc_pmmov_7_d_median), xsd:decimal]
+      - [ex-property:anz_pos_a_bs, $(anz_pos_a_bs), xsd:string]
+      - [ex-property:anz_pos_a_h1_bs, $(anz_pos_a_h1_bs), xsd:string]
+      - [ex-property:anz_pos_a_h1n1_bs, $(anz_pos_a_h1n1_bs), xsd:string]
+      - [ex-property:anz_pos_a_h3_bs, $(anz_pos_a_h3_bs), xsd:string]
+      - [ex-property:anz_pos_b_bs, $(anz_pos_b_bs), xsd:string]
+      - [ex-property:anz_pos_a_bl, $(anz_pos_a_bl), xsd:integer]
+      - [ex-property:anz_pos_b_bl, $(anz_pos_b_bl), xsd:integer]
+      - [ex-property:anz_pos_all_bl, $(anz_pos_all_bl), xsd:integer]
+      - [ex-property:infa_bs_bl, $(infa_bs_bl), xsd:integer]
+      - [ex-property:infb_bs_bl, $(infb_bs_bl), xsd:integer]
+      - [ex-property:7t_median_infa, $(7t_median_infa), xsd:integer]
+      - [ex-property:7t_median_infb, $(7t_median_infb), xsd:integer]
+      - [ex-property:kw_anz_pos_rsv_usb, $(kw_anz_pos_rsv_usb), xsd:integer]
+
+  # Week codes (for KW)
+  weekCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(kw)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, $(kw), xsd:integer]
+
+  # Sample codes (for sample_ba_nr)
+  sampleCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(sample_ba_nr)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, $(sample_ba_nr), xsd:string]
+
+  # ObservationSet → Observation link
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(datum)_$(kw)_$(sample_ba_nr)~iri"]
