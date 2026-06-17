@@ -1,0 +1,105 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.tg.ch/sk-stat-140/"
+  ex-obs: "https://ld.tg.ch/sk-stat-140/observation/"
+  ex-property: "https://ld.tg.ch/property/"
+  ex-code: "https://ld.tg.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(geschaeftsnummer)"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:datum_geschaeft_eingang", "$(datum_geschaeft_eingang)", xsd:date]
+      - ["ex-property:datum_geschaeft_abschluss", "$(datum_geschaeft_abschluss)", xsd:date]
+      - ["ex-property:geschaeftsnummer", "$(geschaeftsnummer)"]
+      - ["ex-property:grg_nummer", "$(grg_nummer)", xsd:integer]
+      - ["ex-property:geschaftstitel", "$(geschaftstitel)"]
+      - ["ex-property:geschaftsart", "ex-code:$(geschaftsart)~iri"]
+      - ["ex-property:kennung", "ex-code:$(kennung)~iri"]
+      - ["ex-property:sachbegriff_grgeko_1", "ex-code:$(sachbegriff_grgeko_1)~iri"]
+      - ["ex-property:sachbegriff_grgeko_2", "ex-code:$(sachbegriff_grgeko_2)~iri"]
+      - ["ex-property:sachbegriff_grgeko_3", "ex-code:$(sachbegriff_grgeko_3)~iri"]
+      - ["ex-property:status", "ex-code:$(status)~iri"]
+      - ["ex-property:departement", "ex-code:$(departement)~iri"]
+      - ["ex-property:RAUM", "ex-code:Kanton_Thurgau~iri"]
+      - ["ex-property:anzahl_erstunterzeichnende", "$(anzahl_erstunterzeichnende)", xsd:integer]
+      - ["ex-property:anzahl_mitunterzeichnende", "$(anzahl_mitunterzeichnende)", xsd:integer]
+      - ["ex-property:total_unterzeichnende", "$(total_unterzeichnende)", xsd:integer]
+
+  geschaftsartCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(geschaftsart)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(geschaftsart)"]
+
+  kennungCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(kennung)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(kennung)"]
+
+  sachbegriff1Codes:
+    sources:
+      - csvSource
+    s: "ex-code:$(sachbegriff_grgeko_1)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(sachbegriff_grgeko_1)"]
+
+  sachbegriff2Codes:
+    sources:
+      - csvSource
+    s: "ex-code:$(sachbegriff_grgeko_2)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(sachbegriff_grgeko_2)"]
+
+  sachbegriff3Codes:
+    sources:
+      - csvSource
+    s: "ex-code:$(sachbegriff_grgeko_3)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(sachbegriff_grgeko_3)"]
+
+  statusCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(status)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(status)"]
+
+  departementCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(departement)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(departement)"]
+
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(geschaeftsnummer)~iri"]
