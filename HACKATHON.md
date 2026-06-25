@@ -23,6 +23,8 @@ the host — open the folder in your IDE while the commands are running.
   - `AZURE_OPENAI_KEY`
   - `AZURE_OPENAI_DEPLOYMENT`
   - `APP_GITHUB_TOKEN` — any value; only used by the PR path, not by `--local`.
+- For dataset bootstrap mode (`--dataset-id`), also set:
+  - `HUWISE_DOMAIN` (for example `data.bs.ch`)
 - That's it. No local Python install, no Java, no node.
 
 ```bash
@@ -42,9 +44,17 @@ Fuseki is now serving an empty dataset `test` at
 
 ## Step 2 — Generate the mapping with `--local`
 
-The example folder `example/weather-binningen-hourly/` contains a small
-CSV plus a DCAT description and a column glossary. Run the full pipeline
-against it:
+Preferred path: run with dataset bootstrap (`--dataset-id`) so CSV and
+metadata are fetched automatically:
+
+```bash
+docker compose run --rm ogd-to-lod \
+    --dataset-id 100051 \
+    --output-folder weather-binningen-hourly \
+    --local
+```
+
+Alternative path: run against the local bundled files:
 
 ```bash
 docker compose run --rm ogd-to-lod \
@@ -54,6 +64,10 @@ docker compose run --rm ogd-to-lod \
               example/weather-binningen-hourly/fields.txt \
     --local
 ```
+
+In dataset mode, setup artifacts are materialized under
+`.work/dataset_setup/<timestamp>-100051/` and then fed into the same
+workflow.
 
 The tool is interactive — it will:
 
