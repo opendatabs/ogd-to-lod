@@ -108,8 +108,6 @@ class MappingFlow:
             },
         )
 
-        graph.add_edge("wait_for_lookup", "lookup")
-
         graph.add_edge("propose", "wait_for_input")
 
         graph.add_conditional_edges(
