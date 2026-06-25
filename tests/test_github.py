@@ -131,16 +131,19 @@ class TestGitHubService:
             sha="abc123",
         )
 
-        # Verify two files were committed (YARRRML + CSV)
-        assert mock_repo.create_file.call_count == 2
+        # Verify three files were committed (YARRRML + CSV + README)
+        assert mock_repo.create_file.call_count == 3
         calls = mock_repo.create_file.call_args_list
         rml_kwargs = calls[0][1]
         csv_kwargs = calls[1][1]
+        readme_kwargs = calls[2][1]
         assert rml_kwargs["path"] == "mapping/test-mapping/mapping.yarrrml.yaml"
         assert rml_kwargs["content"] == "@prefix rr: <...> ."
         assert rml_kwargs["branch"] == "mapping/test-mapping"
         assert csv_kwargs["path"] == "mapping/test-mapping/data.csv"
         assert csv_kwargs["content"] == "col1,col2\n1,2\n"
+        assert readme_kwargs["path"] == "mapping/test-mapping/README.md"
+        assert readme_kwargs["content"] == "Test description"
 
         # Verify PR was created
         mock_repo.create_pull.assert_called_once()
@@ -277,8 +280,8 @@ class TestGitHubService:
             csv_content="col1\nval\n",
         )
 
-        # Both files exist → both should be updated, none created
-        assert mock_repo.update_file.call_count == 2
+        # All three files exist → all should be updated, none created
+        assert mock_repo.update_file.call_count == 3
         for call in mock_repo.update_file.call_args_list:
             assert call[1]["sha"] == "file-sha-123"
 
@@ -414,11 +417,12 @@ class TestGitHubService:
             csv_content="year,value\n2024,100\n",
         )
 
-        assert mock_repo.create_file.call_count == 2
+        assert mock_repo.create_file.call_count == 3
         calls = mock_repo.create_file.call_args_list
         assert calls[0][1]["path"] == "mapping/with-csv/mapping.yarrrml.yaml"
         assert calls[1][1]["path"] == "mapping/with-csv/population.csv"
         assert calls[1][1]["content"] == "year,value\n2024,100\n"
+        assert calls[2][1]["path"] == "mapping/with-csv/README.md"
 
     def test_custom_mappings_folder(self, github_config, mock_github):
         """Override the mappings_folder parent."""
@@ -452,6 +456,7 @@ class TestGitHubService:
         calls = mock_repo.create_file.call_args_list
         assert calls[0][1]["path"] == "mappings/custom/mapping.yarrrml.yaml"
         assert calls[1][1]["path"] == "mappings/custom/data.csv"
+        assert calls[2][1]["path"] == "mappings/custom/README.md"
 
     def test_metadata_file_committed_when_provided(self, github_config, mock_github):
         """metadata.ttl is committed alongside YARRRML and CSV when provided."""
@@ -482,12 +487,13 @@ class TestGitHubService:
             metadata_content="<https://ex.org/> a cube:Cube .",
         )
 
-        assert mock_repo.create_file.call_count == 3
+        assert mock_repo.create_file.call_count == 4
         calls = mock_repo.create_file.call_args_list
         assert calls[0][1]["path"] == "mapping/with-meta/mapping.yarrrml.yaml"
         assert calls[1][1]["path"] == "mapping/with-meta/data.csv"
         assert calls[2][1]["path"] == "mapping/with-meta/metadata.ttl"
         assert calls[2][1]["content"] == "<https://ex.org/> a cube:Cube ."
+        assert calls[3][1]["path"] == "mapping/with-meta/README.md"
 
     def test_metadata_file_omitted_when_none(self, github_config, mock_github):
         """No metadata.ttl is committed when metadata_content is None."""
@@ -517,6 +523,7 @@ class TestGitHubService:
             csv_content="col1\nval\n",
         )
 
-        assert mock_repo.create_file.call_count == 2
+        assert mock_repo.create_file.call_count == 3
         paths = [c[1]["path"] for c in mock_repo.create_file.call_args_list]
         assert all("metadata.ttl" not in p for p in paths)
+        assert "mapping/no-meta/README.md" in paths
