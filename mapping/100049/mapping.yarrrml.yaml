@@ -1,0 +1,54 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100049/"
+  ex-obs: "https://ld.bs.ch/100049/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(datum_zeit)_$(geo_point_2d)"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "ex-code:$(datum_zeit)~iri"]
+      - ["ex-property:RAUM", "ex-code:$(geo_point_2d)~iri"]
+      - ["ex-property:pm10_stundenmittelwerte_ug_m3", "$(pm10_stundenmittelwerte_ug_m3)", xsd:decimal]
+      - ["ex-property:pm2_5_stundenmittelwerte_ug_m3", "$(pm2_5_stundenmittelwerte_ug_m3)", xsd:decimal]
+      - ["ex-property:o3_stundenmittelwerte_ug_m3", "$(o3_stundenmittelwerte_ug_m3)", xsd:decimal]
+      - ["ex-property:no2_stundenmittelwerte_ug_m3", "$(no2_stundenmittelwerte_ug_m3)", xsd:decimal]
+
+  zeitCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(datum_zeit)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(datum_zeit)"]
+
+  raumCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(geo_point_2d)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(geo_point_2d)"]
+
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(datum_zeit)_$(geo_point_2d)~iri"]
