@@ -1,0 +1,76 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100273/"
+  ex-obs: "https://ld.bs.ch/100273/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(messbeginn)_$(messende)_$(standort)_$(parameter)_$(einheit)_$(messmethode)"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT_messbeginn", "$(messbeginn)", xsd:date]
+      - ["ex-property:ZEIT_messende", "$(messende)", xsd:date]
+      - ["ex-property:RAUM", "ex-code:$(standort)~iri"]
+      - ["ex-property:parameter", "ex-code:$(parameter)~iri"]
+      - ["ex-property:einheit", "ex-code:$(einheit)~iri"]
+      - ["ex-property:messmethode", "ex-code:$(messmethode)~iri"]
+      - ["ex-property:messwert", "$(messwert)", xsd:decimal]
+      - ["ex-property:messwert_3_dezimalstellen", "$(messwert_3_dezimalstellen)", xsd:decimal]
+      - ["ex-property:interventionswert", "$(interventionswert)", xsd:decimal]
+      - ["ex-property:interventionswert_3_dez", "$(interventionswert_3_dez)", xsd:decimal]
+      - ["ex-property:warnwert", "$(warnwert)", xsd:decimal]
+      - ["ex-property:warnwert_3_dez", "$(warnwert_3_dez)", xsd:decimal]
+
+  standortCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(standort)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(standort)"]
+
+  parameterCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(parameter)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(parameter)"]
+
+  einheitCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(einheit)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(einheit)"]
+
+  messmethodeCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(messmethode)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(messmethode)"]
+
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(messbeginn)_$(messende)_$(standort)_$(parameter)_$(einheit)_$(messmethode)~iri"]
