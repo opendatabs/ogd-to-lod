@@ -1,0 +1,69 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100051> a cube:Cube ;
+    schema:name "Luftqualität Station Basel-Binningen" ;
+    schema:description "<p>Stündliche Messungen der <a href=\"https://www.meteoschweiz.admin.ch/home/messwerte.html?param=messnetz-automatisch&amp;station=BAS\" target=\"_blank\">automatischen Wetterstation Basel-Binningen</a>. </p>" ;
+    schema:publisher "MeteoSchweiz" ;
+    dcterms:license "CC BY 4.0" ;
+    schema:keywords "CO", "Feinstaub", "Globalstrahlung", "Kohlenmonoxid", "Luft", "NO2", "NOX", "Niederschlag", "Ozon", "Partikelzahlkonzentraion", "Russ", "Stickoxid", "Stickstoffdioxid", "Temperatur" ;
+    cube:observationSet <https://ld.bs.ch/100051/observation-set> .
+
+<https://ld.bs.ch/100051/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "datum_zeit" ;
+    schema:description "Zeitstempel in UTC" .
+
+<https://ld.bs.ch/property/o3_ug_m3> a cube:MeasureDimension ;
+    schema:name "o3_ug_m3" ;
+    schema:description "Ozon" ;
+    schema:disambiguatingDescription "unit: μg/m3" .
+
+<https://ld.bs.ch/property/no2_ug_m3> a cube:MeasureDimension ;
+    schema:name "no2_ug_m3" ;
+    schema:description "Stickstoffdioxid" ;
+    schema:disambiguatingDescription "unit: μg/m3" .
+
+<https://ld.bs.ch/property/pm10_ug_m3> a cube:MeasureDimension ;
+    schema:name "pm10_ug_m3" ;
+    schema:description "Feinstaub mit Partikelgrösse < 10 tausendstel Millimeter" ;
+    schema:disambiguatingDescription "unit: μg/m3" .
+
+<https://ld.bs.ch/property/pm2_5_ug_m3> a cube:MeasureDimension ;
+    schema:name "pm2_5_ug_m3" ;
+    schema:description "Feinstaub mit Partikelgrösse < 2.5 tausendstel Millimeter" ;
+    schema:disambiguatingDescription "unit: μg/m3" .
+
+<https://ld.bs.ch/property/cpc_1_cm3> a cube:MeasureDimension ;
+    schema:name "cpc_1_cm3" ;
+    schema:description "Partikelanzahlkonzentration" .
+
+<https://ld.bs.ch/property/ec_ug_m3> a cube:MeasureDimension ;
+    schema:name "ec_ug_m3" ;
+    schema:description "Russ (EC in PM2.5)" ;
+    schema:disambiguatingDescription "unit: μg/m3" .
+
+<https://ld.bs.ch/property/prec_mm> a cube:MeasureDimension ;
+    schema:name "prec_mm" ;
+    schema:description "Niederschlag" ;
+    schema:disambiguatingDescription "unit: mm" .
+
+<https://ld.bs.ch/property/rad_w_m2> a cube:MeasureDimension ;
+    schema:name "rad_w_m2" ;
+    schema:description "Globalstrahlung" .
+
+<https://ld.bs.ch/property/so2_ug_m3> a cube:MeasureDimension ;
+    schema:name "so2_ug_m3" ;
+    schema:description "Schwefeldioxid" ;
+    schema:disambiguatingDescription "unit: μg/m3" .
+
+<https://ld.bs.ch/property/nox_ug_m3_eq_no2> a cube:MeasureDimension ;
+    schema:name "nox_ug_m3_eq_no2" ;
+    schema:disambiguatingDescription "unit: μg/m3" .
+
+<https://ld.bs.ch/property/temp_c> a cube:MeasureDimension ;
+    schema:name "temp_c" ;
+    schema:disambiguatingDescription "unit: °C" .
