@@ -1,0 +1,66 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100272> a cube:Cube ;
+    schema:name "Vorhersagen Birs: Wasserstand und Abfluss" ;
+    schema:description "Hydrologische Vorhersagen (Wasserstand und Abfluss) für die Station \"Birs - Münchenstein, Hofmatt\". \n\nDie Vorhersagen basieren auf den Meteo-Modellen ICON-CH1-EPS, ICON-CH2-EPS und IFS. Am Anfang der Zeitreihen stehen 24 Std. Messwerte, anschliessend fangen die Prognosen an. \n\nBei den ICON-Modellen wird der Kontroll-Lauf in den Spalten \"Wasserstand\" und \"Abflussmenge\" ausgewiesen. Der Kontroll-Lauf ist die hydrologische Vorhersage basierend auf der meteorologischen Kontrollvorhersage.\n\nStationsinfo: Die Station befindet sich bei \"Hofmatt\" in Münchenstein etwa auf Höhe der Brücke \"Baselstrasse\" über die Birs.\n\nWeitere Informationen sind hier zu finden: https://www.hydrodaten.admin.ch/de/seen-und-fluesse/stationen-und-daten/2106\n\nÄnderungsprotokoll:\n\n30.05.2024: Für die numerische Vorhersage wurde das Wettermodell COSMO mit dem neuen Wettermodell ICON (Icosahedral Nonhydrostatic Weather and Climate Model) ersetzt. Mehr Infos dazu finden Sie hier: https://www.meteoschweiz.admin.ch/ueber-uns/forschung-und-zusammenarbeit/projekte/2023/icon-22.html" ;
+    schema:publisher "Bundesamt für Umwelt BAFU" ;
+    dcterms:modified "2024-05-30"^^xsd:date ;
+    dcterms:license "CC0 1.0" ;
+    schema:keywords "Fliessgewässer", "Gewässer", "Hydrologie", "Vorhersage" ;
+    cube:observationSet <https://ld.bs.ch/100272/observation-set> .
+
+<https://ld.bs.ch/100272/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "timestamp" ;
+    schema:description "Datum und Uhrzeit" .
+
+<https://ld.bs.ch/property/methode> a cube:KeyDimension ;
+    schema:name "methode" ;
+    schema:description "Das verwendete Meteo-Modell" .
+
+<https://ld.bs.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "raum" .
+
+<https://ld.bs.ch/property/wasserstand> a cube:MeasureDimension ;
+    schema:name "wasserstand" ;
+    schema:description "Pegelstand in Meter über Meer. Bei den ICON-Modellen handelt es ich um die hydrologische Vorhersage basierend auf der meteorologischen Kontrollvorhersage (Kontroll-Lauf oder control run)." ;
+    schema:disambiguatingDescription "unit: m" .
+
+<https://ld.bs.ch/property/abfluss> a cube:MeasureDimension ;
+    schema:name "abfluss" ;
+    schema:description "Abfliessende Wassermenge in Kubikmeter pro Sekunde. Bei den ICON-Modellen handelt es ich um die hydrologische Vorhersage basierend auf der meteorologischen Kontrollvorhersage (Kontroll-Lauf oder control run)." ;
+    schema:disambiguatingDescription "unit: m3/s" .
+
+<https://ld.bs.ch/property/h_min> a cube:MeasureDimension ;
+    schema:name "h_min" .
+
+<https://ld.bs.ch/property/h_p25> a cube:MeasureDimension ;
+    schema:name "h_p25" .
+
+<https://ld.bs.ch/property/h_p50> a cube:MeasureDimension ;
+    schema:name "h_p50" .
+
+<https://ld.bs.ch/property/h_p75> a cube:MeasureDimension ;
+    schema:name "h_p75" .
+
+<https://ld.bs.ch/property/h_max> a cube:MeasureDimension ;
+    schema:name "h_max" .
+
+<https://ld.bs.ch/property/q_min> a cube:MeasureDimension ;
+    schema:name "q_min" .
+
+<https://ld.bs.ch/property/q_p25> a cube:MeasureDimension ;
+    schema:name "q_p25" .
+
+<https://ld.bs.ch/property/q_p50> a cube:MeasureDimension ;
+    schema:name "q_p50" .
+
+<https://ld.bs.ch/property/q_p75> a cube:MeasureDimension ;
+    schema:name "q_p75" .
+
+<https://ld.bs.ch/property/q_max> a cube:MeasureDimension ;
+    schema:name "q_max" .
