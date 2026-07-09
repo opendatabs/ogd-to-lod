@@ -1,0 +1,26 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100100> a cube:Cube ;
+    schema:name "Feinstaubmessungen Naturhistorisches Museum Basel" ;
+    schema:description "<p>Im Rahmen der Sonderausstellung ERDE AM LIMIT (20.11.2020 bis 3.7.2022) wurden mit Hilfe eines Mikrosensors Feinstaub (PM2.5) vom Dach des <a href=\"https://www.nmbs.ch/\" target=\"_blank\">Naturhistorischen Museums Basel</a> gemessen. Hier werden die unvalidierten Daten von Feinstaub PM2.5 zur Verfügung gestellt.</p>" ;
+    schema:publisher "Amt für Umwelt und Energie" ;
+    dcterms:license "CC BY 4.0" ;
+    schema:keywords "Feinstaub", "Luftqualität", "Museum", "PM2.5", "PM25" ;
+    cube:observationSet <https://ld.bs.ch/100100/observation-set> .
+
+<https://ld.bs.ch/100100/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "anfangszeit" ;
+    schema:description "Zeitstempel des Messbeginns" .
+
+<https://ld.bs.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "location" .
+
+<https://ld.bs.ch/property/pm25> a cube:MeasureDimension ;
+    schema:name "pm25" ;
+    schema:description "Feinstaub mit Partikelgrösse < 2.5 tausendstel Millimeter" ;
+    schema:disambiguatingDescription "unit: μg/m3" .
