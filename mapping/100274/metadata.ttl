@@ -1,0 +1,66 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100274> a cube:Cube ;
+    schema:name "Überwachung Luftqualität Transformation Areal Rosental: Staubgebundene Schadstoffe" ;
+    schema:description "<p>Bedingt durch die frühere Nutzung des Rosental Areals – auch bekannt als die Wiege der Basler Chemie - ist der Untergrund mit Schadstoffen belastet. Während der Tiefbauarbeiten im Rahmen der «Transformation <a href=\"https://rosentalmitte.ch/\" target=\"_blank\">Rosental Mitte</a>» überwacht das <a href=\"https://www.baselland.ch/politik-und-behorden/direktionen/bau-und-umweltschutzdirektion/lufthygiene\" target=\"_blank\">Lufthygieneamt beider Basel (LHA)</a> die Immissionen mittels Messungen der Luft <a href=\"https://data.bs.ch/pages/rosental-dashboard/\" target=\"_blank\">(Dashboard)</a>. </p><p>Änderungsprotokoll:<br>23.4.2024: Die Messstation ROSEN 3 wurde verschoben. Alte geografische Breiten- und Längengrade 47.567827676637364, 7.603804744961502. Neue Breiten- und Lägengrade 47.567997530870265, 7.60479830196066.<br></p><div><br></div>" ;
+    schema:publisher "Amt für Umwelt und Energie" ;
+    dcterms:license "CC BY 4.0" ;
+    schema:keywords "Luftqualität" ;
+    cube:observationSet <https://ld.bs.ch/100274/observation-set> .
+
+<https://ld.bs.ch/100274/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "messbeginn" ;
+    schema:description "Beginn der Messung" .
+
+<https://ld.bs.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "standort" ;
+    schema:description "Name des Standorts" .
+
+<https://ld.bs.ch/property/parameter> a cube:KeyDimension ;
+    schema:name "parameter" ;
+    schema:description "Gemessener Stoff" .
+
+<https://ld.bs.ch/property/einheit> a cube:KeyDimension ;
+    schema:name "einheit" .
+
+<https://ld.bs.ch/property/messmethode> a cube:KeyDimension ;
+    schema:name "messmethode" .
+
+<https://ld.bs.ch/property/messwert> a cube:MeasureDimension ;
+    schema:name "messwert" ;
+    schema:description "Gemessener Wert" .
+
+<https://ld.bs.ch/property/messwert_zahlenformat> a cube:MeasureDimension ;
+    schema:name "messwert_zahlenformat" ;
+    schema:description "Gemessener Wert bis auf 3 Dezimalstellen" .
+
+<https://ld.bs.ch/property/3_dezimalstellen_messwert> a cube:MeasureDimension ;
+    schema:name "3_dezimalstellen_messwert" ;
+    schema:description "Dieses Attribut wird verwendet, um die Anzahl der Dezimalstellen für die Darstellung von Messwerten im Rosental-Dashboard anzupassen. Diese Anpassung ist notwendig, da die Darstellungsoptionen im Datenportal begrenzt sind. Mit diesem Attribut können wir sicherstellen, dass die Dezimalstellen in der Visualisierung genau so angezeigt werden, wie es für die Präsentation der Daten erforderlich ist." .
+
+<https://ld.bs.ch/property/4_dezimalstellen_messwert> a cube:MeasureDimension ;
+    schema:name "4_dezimalstellen_messwert" ;
+    schema:description "Dieses Attribut wird verwendet, um die Anzahl der Dezimalstellen für die Darstellung von Messwerten im Rosental-Dashboard anzupassen. Diese Anpassung ist notwendig, da die Darstellungsoptionen im Datenportal begrenzt sind. Mit diesem Attribut können wir sicherstellen, dass die Dezimalstellen in der Visualisierung genau so angezeigt werden, wie es für die Präsentation der Daten erforderlich ist." .
+
+<https://ld.bs.ch/property/5_dezimalstellen_messwert> a cube:MeasureDimension ;
+    schema:name "5_dezimalstellen_messwert" ;
+    schema:description "Dieses Attribut wird verwendet, um die Anzahl der Dezimalstellen für die Darstellung von Messwerten im Rosental-Dashboard anzupassen. Diese Anpassung ist notwendig, da die Darstellungsoptionen im Datenportal begrenzt sind. Mit diesem Attribut können wir sicherstellen, dass die Dezimalstellen in der Visualisierung genau so angezeigt werden, wie es für die Präsentation der Daten erforderlich ist." .
+
+<https://ld.bs.ch/property/interventionswert> a cube:MeasureDimension ;
+    schema:name "interventionswert" ;
+    schema:description "Interventionswert" .
+
+<https://ld.bs.ch/property/interventionswert_3_dez> a cube:MeasureDimension ;
+    schema:name "interventionswert_3_dez" ;
+    schema:description "Dieses Attribut wird verwendet, um die Anzahl der Dezimalstellen für die Darstellung von Messwerten im Rosental-Dashboard anzupassen. Diese Anpassung ist notwendig, da die Darstellungsoptionen im Datenportal begrenzt sind. Mit diesem Attribut können wir sicherstellen, dass die Dezimalstellen in der Visualisierung genau so angezeigt werden, wie" .
+
+<https://ld.bs.ch/property/warnwert> a cube:MeasureDimension ;
+    schema:name "warnwert" .
+
+<https://ld.bs.ch/property/warnwert_3_dez> a cube:MeasureDimension ;
+    schema:name "warnwert_3_dez" .
