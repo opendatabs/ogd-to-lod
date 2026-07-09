@@ -1,0 +1,39 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100050> a cube:Cube ;
+    schema:name "Luftqualität Station Feldbergstrasse" ;
+    schema:description "Standortbeschreibung: Die Messstation befindet sich in Basel direkt an der Kreuzung Feldbergstrasse / Hammerstrasse. Sie liegt in einer schlecht durchlüfteten Strassenschlucht mit hohem Verkehrsaufkommen und oft stehendem Kolonnenverkehr. Die Station Basel Feldbergstrasse ist ein Ort mit sehr hoher lokaler Belastung innerhalb der Stadt Basel.\nLage: Stadtzentrum an Strasse, geschlossene Bebauung\nKoordinaten: 2611747 / 1268491 bzw. N 47° 34.021 E 7° 35.684; 255 m ü. M.\nGeografische Lage: Juranordfuss\nSiedlungsgrösse: 166'600 Einwohner\nVerkehr, DTV (% LKW): 21'900 (3%)\nStrassenabstand: 2 m" ;
+    schema:publisher "Amt für Umwelt und Energie" ;
+    dcterms:license "CC BY 4.0" ;
+    schema:keywords "Echtzeit", "Feinstaub", "Luft", "Motorräder", "NO2", "NOX", "Realtime", "Stickoxid", "Stickstoffdioxid" ;
+    cube:observationSet <https://ld.bs.ch/100050/observation-set> .
+
+<https://ld.bs.ch/100050/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "datum_zeit" .
+
+<https://ld.bs.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "geo_point_2d" .
+
+<https://ld.bs.ch/property/station> a cube:KeyDimension ;
+    schema:name "station" .
+
+<https://ld.bs.ch/property/pm10_stundenmittelwerte_ug_m3> a cube:MeasureDimension ;
+    schema:name "pm10_stundenmittelwerte_ug_m3" ;
+    schema:disambiguatingDescription "unit: μg/m3" .
+
+<https://ld.bs.ch/property/pm2_5_stundenmittelwerte_ug_m3> a cube:MeasureDimension ;
+    schema:name "pm2_5_stundenmittelwerte_ug_m3" ;
+    schema:disambiguatingDescription "unit: μg/m3" .
+
+<https://ld.bs.ch/property/no2_stundenmittelwerte_ug_m3> a cube:MeasureDimension ;
+    schema:name "no2_stundenmittelwerte_ug_m3" ;
+    schema:disambiguatingDescription "unit: μg/m3" .
+
+<https://ld.bs.ch/property/o3_stundenmittelwerte_ug_m3> a cube:MeasureDimension ;
+    schema:name "o3_stundenmittelwerte_ug_m3" ;
+    schema:disambiguatingDescription "unit: μg/m3" .
