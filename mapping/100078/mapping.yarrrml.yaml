@@ -1,0 +1,54 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.bs.ch/100078/"
+  ex-obs: "https://ld.bs.ch/100078/observation/"
+  ex-property: "https://ld.bs.ch/property/"
+  ex-code: "https://ld.bs.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(date)_$(kategorie)_EuroAirport_Basel_Mulhouse_Freiburg"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT", "$(date)", xsd:date]
+      - ["ex-property:kategorie", "ex-code:$(kategorie)~iri"]
+      - ["ex-property:RAUM", "ex-code:EuroAirport_Basel_Mulhouse_Freiburg~iri"]
+      - ["ex-property:pax", "$(pax)", xsd:integer]
+      - ["ex-property:fret", "$(fret)", xsd:decimal]
+      - ["ex-property:mvt", "$(mvt)", xsd:integer]
+
+  kategorieCodes:
+    sources:
+      - csvSource
+    s: "ex-code:$(kategorie)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(kategorie)"]
+
+  spatialCoverageCode:
+    sources:
+      - csvSource
+    s: "ex-code:EuroAirport_Basel_Mulhouse_Freiburg"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "EuroAirport Basel Mulhouse Freiburg"]
+
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(date)_$(kategorie)_EuroAirport_Basel_Mulhouse_Freiburg~iri"]

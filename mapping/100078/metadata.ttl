@@ -1,0 +1,37 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.bs.ch/100078> a cube:Cube ;
+    schema:name "EuroAirport: Tägliche Flugbewegungen, Passagiere und Fracht" ;
+    schema:description "Der Datensatz zeigt die Flugbewegungen sowie Angaben zur Anzahl Passagiere und zur beförderten Fracht auf dem EuroAirport Basel Mulhouse Freiburg für jeden Tag ab 1. Januar 2019." ;
+    schema:publisher "Flughafen Basel-Mulhouse EuroAirport" ;
+    dcterms:license "CC BY 4.0" ;
+    schema:keywords "Airport", "EAP", "Flughafen", "Fluglärm", "Flugzeug", "Flüge", "Landung", "Start" ;
+    cube:observationSet <https://ld.bs.ch/100078/observation-set> .
+
+<https://ld.bs.ch/100078/observation-set> a cube:ObservationSet .
+
+<https://ld.bs.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "date" .
+
+<https://ld.bs.ch/property/kategorie> a cube:KeyDimension ;
+    schema:name "kategorie" ;
+    schema:description "Andere Kategorien = allgemeiner und anderer nicht-gewerblicher Verkehr" .
+
+<https://ld.bs.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "spatial_coverage" .
+
+<https://ld.bs.ch/property/pax> a cube:MeasureDimension ;
+    schema:name "pax" ;
+    schema:description "Anzahl Passagiere" .
+
+<https://ld.bs.ch/property/fret> a cube:MeasureDimension ;
+    schema:name "fret" ;
+    schema:description "in Tonnen" ;
+    schema:disambiguatingDescription "unit: t" .
+
+<https://ld.bs.ch/property/mvt> a cube:MeasureDimension ;
+    schema:name "mvt" ;
+    schema:description "Starts und Landungen" .
