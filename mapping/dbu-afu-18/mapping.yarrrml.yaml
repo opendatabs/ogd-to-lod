@@ -1,0 +1,62 @@
+prefixes:
+  rml: "http://semweb.mmlab.be/ns/rml#"
+  rr: "http://www.w3.org/ns/r2rml#"
+  ql: "http://semweb.mmlab.be/ns/ql#"
+  csvw: "http://www.w3.org/ns/csvw#"
+  schema: "http://schema.org/"
+  cube: "https://cube.link/"
+  xsd: "http://www.w3.org/2001/XMLSchema#"
+  ex: "https://ld.tg.ch/dbu-afu-18/"
+  ex-obs: "https://ld.tg.ch/dbu-afu-18/observation/"
+  ex-property: "https://ld.tg.ch/property/"
+  ex-code: "https://ld.tg.ch/code/"
+
+sources:
+  csvSource:
+    access: "{CSV_SOURCE}"
+    referenceFormulation: csv
+
+mappings:
+  observations:
+    sources:
+      - csvSource
+    s: "ex-obs:$(startzeit)_$(messstationid)_$(indikator)"
+    po:
+      - [a, cube:Observation]
+      - ["ex-property:ZEIT_ANFANG", "$(startzeit)", xsd:dateTime]
+      - ["ex-property:ZEIT_ENDE", "$(endzeit)", xsd:dateTime]
+      - ["ex-property:RAUM", "ex-code:$(messstelle)~iri"]
+      - ["ex-property:MESSSTATION", "ex-code:$(messstationid)~iri"]
+      - ["ex-property:INDIKATOR", "ex-code:$(indikator)~iri"]
+      - ["ex-property:messwert", "$(messwert)", xsd:decimal]
+
+  messstelleCode:
+    sources:
+      - csvSource
+    s: "ex-code:$(messstelle)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(messstelle)"]
+
+  messstationidCode:
+    sources:
+      - csvSource
+    s: "ex-code:$(messstationid)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(messstationid)"]
+
+  indikatorCode:
+    sources:
+      - csvSource
+    s: "ex-code:$(indikator)"
+    po:
+      - [a, schema:DefinedTerm]
+      - [schema:name, "$(indikator)"]
+
+  observationSetLink:
+    sources:
+      - csvSource
+    s: ex:observation-set
+    po:
+      - [cube:observation, "ex-obs:$(startzeit)_$(messstationid)_$(indikator)~iri"]

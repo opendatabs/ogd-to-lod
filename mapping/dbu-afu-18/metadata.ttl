@@ -1,0 +1,34 @@
+@prefix cube: <https://cube.link/> .
+@prefix schema: <http://schema.org/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://ld.tg.ch/dbu-afu-18> a cube:Cube ;
+    schema:name "Luftqualitätsmessungen Ostluft Thurgau – Stundenwerte" ;
+    schema:description "Die hier veröffentlichten Datensätze für die Messstationen Weinfelden und Konstanz stammen aus dem automatischen Messnetz von Ostluft, das kontinuierlich verschiedene Luftschadstoffe (z.B. NO₂, PM₁₀, O₃) und teilweise meteorologische Parameter (z.B. Temperatur, Luftdruck, Wind) erfasst.\n\n  Jeder Datensatz enthält zeitlich aufgelöste Einzelmesswerte im Halbstunden-, Stun-den- oder Tagesintervall, je nach Version. Die Daten geben an: Start- und Endzeit der Messung, die bezeichnende Messstelle, den Messwert, sowie den zugehöri-gen Indikator (z.B. „Luftdruck“, „NO₂“) und eine eindeutige Stations-ID (Messstation-ID).\n\n  Die Daten werden direkt aus dem standardisierten Ostluft Messnetz übernommen. Die Qualitätssicherung erfolgt gemäß den Richtlinien der Schweizer Luftreinhaltever-ordnung (LRV). Es handelt sich bei den exportierten Daten um vorläufige Werte, die erst mit der Veröffentlichung des Jahresberichts definitiv bestätigt werden. In der Regel ist die vollständige Datenbereinigung Ende April des Folgejahres abgeschlossen.\n\n  Aus Speicherplatzgründen finden sich hier nur die Daten für die letzten 365 Tage. Vollständige Datensätze für ganze Jahre können über folgenden Link als gezippte CSV heruntergeladen werden:\n\n    https://ogdtg.ch/ostluft/stundenwert_JAHR.csv.gz\n    Beispiel 2023: https://ogdtg.ch/ostluft/stundenwert_2023.csv.gz\n    Alle verfügbaren Jahre: https://ogdtg.ch/ostluft/stundenwert_full.csv.gz\n\n  Gemäss Ostluft Messkonzept wird die Messstation beim Berufsbildungszentrum in Weinfelden alle zwei Jahre (gerade Jahre; Wechselstandort), die Messstation Konstanz Wallgutstrasse alljährlich betrieben.\n\n  Die Daten können außerdem über ostluft.ch/messwerte/datenabfrage individuell gefiltert und als CSV-Datei heruntergeladen werden.\n\n  Weitere Informationen zu den gemessenen Schadstoffen und Indikatoren finden Sie hier.\n\n  Bei Fragen wenden Sie sich an die Ostluft Datenzentrale: datenzentrale@ostluft.ch" ;
+    schema:publisher "Amt für Umwelt Kanton Thurgau" ;
+    dcterms:license "CC0 1.0" ;
+    schema:keywords "Wind", "feinstaub", "luft", "luftdruck", "luftqualität", "luftschadstoff", "ostluft", "ozon", "schadstoff", "schadstoffbelastung", "stickstoff", "temperatur" ;
+    cube:observationSet <https://ld.tg.ch/dbu-afu-18/observation-set> .
+
+<https://ld.tg.ch/dbu-afu-18/observation-set> a cube:ObservationSet .
+
+<https://ld.tg.ch/property/ZEIT> a cube:KeyDimension ;
+    schema:name "startzeit" ;
+    schema:description "Startzeit der Messung" .
+
+<https://ld.tg.ch/property/RAUM> a cube:KeyDimension ;
+    schema:name "messstelle" ;
+    schema:description "Bezeichnende Messstelle" .
+
+<https://ld.tg.ch/property/messstationid> a cube:KeyDimension ;
+    schema:name "messstationid" ;
+    schema:description "Eindeutige Stations-ID (Messstation-ID)" .
+
+<https://ld.tg.ch/property/indikator> a cube:KeyDimension ;
+    schema:name "indikator" ;
+    schema:description "Zugehöriger Indikator (z.B. „Luftdruck“, „NO₂“)" .
+
+<https://ld.tg.ch/property/messwert> a cube:MeasureDimension ;
+    schema:name "messwert" ;
+    schema:description "Gemessener Wert" .
